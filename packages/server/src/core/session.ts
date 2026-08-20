@@ -22,6 +22,12 @@ export interface Session {
   state: SessionState;
   accountId: number | null;
   characterId: number | null;
+  /**
+   * Момент, до которого наигранное время уже учтено.
+   * null — игрок ещё не в мире. Двигается вперёд при каждом сохранении,
+   * поэтому одни и те же минуты не могут быть засчитаны дважды.
+   */
+  playedAccountedAt: number | null;
   /** Счётчики для rate-limit, ключ — имя действия. */
   readonly counters: Map<string, { count: number; resetAt: number }>;
 }
@@ -34,6 +40,7 @@ const create = (player: PlayerMp): Session => ({
   state: SessionState.Authenticating,
   accountId: null,
   characterId: null,
+  playedAccountedAt: null,
   counters: new Map(),
 });
 
@@ -64,9 +71,32 @@ export const sessions = {
     return session;
   },
 
-  /** Все авторизованные сессии — нужно для graceful shutdown и админ-инструментов. */
+  /** Все авторизованные сессии — нужно для админ-инструментов. */
   authenticated(): Session[] {
     return [...store.values()].filter((s) => s.accountId !== null);
+  },
+
+  /**
+   * Игроки, находящиеся в мире, вместе с их сущностями.
+   *
+   * Сущность берётся из mp.players по id и сверяется с socialClub сессии:
+   * слот мог быть переиспользован новым игроком, и сохранять его состояние
+   * под чужим персонажем недопустимо.
+   */
+  playing(): { player: PlayerMp; session: Session }[] {
+    const result: { player: PlayerMp; session: Session }[] = [];
+
+    for (const [playerId, session] of store) {
+      if (session.characterId === null) continue;
+
+      const player = mp.players.at(playerId);
+      if (!player || !mp.players.exists(player)) continue;
+      if (player.socialClub !== session.socialClub) continue;
+
+      result.push({ player, session });
+    }
+
+    return result;
   },
 
   get size(): number {

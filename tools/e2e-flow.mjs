@@ -21,6 +21,8 @@ import pg from 'pg';
 
 const handlers = new Map();
 const outgoing = [];
+/** Игроки, которых сервер должен видеть онлайн: аналог mp.players. */
+const online = new Map();
 
 globalThis.mp = {
   events: {
@@ -32,6 +34,7 @@ globalThis.mp = {
   },
   players: {
     exists: (player) => player?.alive !== false,
+    at: (id) => online.get(id),
   },
   joaat: (value) => value.length,
   Vector3: class {
@@ -58,7 +61,7 @@ const makePlayer = (id, socialClub) => ({
   heading: 0,
   dimension: 0,
   alive: true,
-  position: null,
+  position: { x: 0, y: 0, z: 0 },
   kicked: null,
   call(event, args) {
     outgoing.push({ playerId: id, event, args });
@@ -76,6 +79,19 @@ const makePlayer = (id, socialClub) => ({
 let requestCounter = 0;
 
 /** Выполняет RPC так же, как это делает клиент, и ждёт ответ сервера. */
+/** Подключение игрока: и событие сервера, и появление в списке онлайна. */
+const connect = (id, socialClub) => {
+  const player = makePlayer(id, socialClub);
+  online.set(id, player);
+  fire('playerJoin', player);
+  return player;
+};
+
+const disconnect = (player) => {
+  online.delete(player.id);
+  fire('playerQuit', player, 'disconnect', '');
+};
+
 const rpc = async (player, event, payload) => {
   requestCounter += 1;
   const requestId = `test-${requestCounter}`;
@@ -109,6 +125,9 @@ const check = (name, fn) => {
   }
 };
 
+// Короткий интервал: иначе автосохранение не успеет сработать за прогон.
+process.env.AUTOSAVE_SECONDS = process.env.AUTOSAVE_SECONDS ?? '2';
+
 const db = new pg.Client({
   host: process.env.DB_HOST ?? '127.0.0.1',
   port: Number.parseInt(process.env.DB_PORT ?? '5432', 10),
@@ -127,8 +146,7 @@ require('../dist/packages/eclipse/index.js');
 // Ждём завершения bootstrap (подключение к базе асинхронно).
 await new Promise((resolve) => setTimeout(resolve, 2500));
 
-const player = makePlayer(0, 'TestPlayer');
-fire('playerJoin', player);
+const player = connect(0, 'TestPlayer');
 
 check('сессия открыта, игрок не отключён', () => assert.equal(player.kicked, null));
 
@@ -148,8 +166,7 @@ check('пароль не хранится открытым текстом', () =
 });
 
 // --- повторная регистрация того же логина ---
-const player2 = makePlayer(1, 'TestPlayer2');
-fire('playerJoin', player2);
+const player2 = connect(1, 'TestPlayer2');
 const duplicate = await rpc(player2, 'eclipse:auth:register', {
   login: 'TEST_USER',
   email: 'other@example.com',
@@ -161,8 +178,7 @@ check('логин занят независимо от регистра', () => 
 });
 
 // --- вход с неверным паролем ---
-const player3 = makePlayer(2, 'TestPlayer3');
-fire('playerJoin', player3);
+const player3 = connect(2, 'TestPlayer3');
 const wrong = await rpc(player3, 'eclipse:auth:login', { login: 'test_user', password: 'wrong password!' });
 check('неверный пароль отклонён', () => {
   assert.equal(wrong.ok, false);
@@ -187,8 +203,7 @@ for (let attempt = 0; attempt < 8; attempt += 1) {
 check('перебор паролей упирается в лимит', () => assert.ok(limited, 'лимит не сработал'));
 
 // --- успешный вход ---
-const player4 = makePlayer(3, 'TestPlayer4');
-fire('playerJoin', player4);
+const player4 = connect(3, 'TestPlayer4');
 const loggedIn = await rpc(player4, 'eclipse:auth:login', {
   login: 'test_user',
   password: 'correct horse battery',
@@ -239,8 +254,7 @@ const badName = await rpc(player4, 'eclipse:character:create', {
 check('имя с цифрами отклонено', () => assert.equal(badName.code, 'VALIDATION'));
 
 // --- чужой персонаж недоступен ---
-const player5 = makePlayer(4, 'TestPlayer5');
-fire('playerJoin', player5);
+const player5 = connect(4, 'TestPlayer5');
 await rpc(player5, 'eclipse:auth:register', {
   login: 'second_user',
   email: 'second@example.com',
@@ -275,10 +289,165 @@ check('попытки входа записаны в журнал', () => {
   assert.ok(log.rows.some((r) => r.failure_reason === 'wrong_password'), 'нет записи о неверном пароле');
 });
 
-// --- отключение закрывает сессию ---
-fire('playerQuit', player4, 'disconnect', '');
+// ================= СОХРАНЕНИЕ СОСТОЯНИЯ =================
+
+const characterId = created.data.characterId;
+const readState = async () =>
+  (
+    await db.query(
+      'SELECT position_x, position_y, position_z, heading, dimension, health, armour, played_minutes FROM characters WHERE id = $1',
+      [characterId],
+    )
+  ).rows[0];
+
+const spawnState = await readState();
+check('после создания персонаж стоит в стартовой точке', () =>
+  assert.equal(Number(spawnState.position_x).toFixed(1), '-1604.3'),
+);
+
+// --- автосохранение срабатывает без выхода из игры ---
+player4.position = { x: 100.5, y: 200.25, z: 30.125 };
+player4.heading = 90.5;
+player4.health = 77;
+player4.armour = 42;
+
+await new Promise((resolve) => setTimeout(resolve, 2600));
+
+const autosaved = await readState();
+check('автосохранение записало позицию без выхода игрока', () => {
+  assert.equal(Number(autosaved.position_x).toFixed(3), '100.500');
+  assert.equal(Number(autosaved.position_z).toFixed(3), '30.125');
+});
+check('автосохранение записало здоровье и броню', () => {
+  assert.equal(autosaved.health, 77);
+  assert.equal(autosaved.armour, 42);
+});
+check('короткая сессия не начисляет фантомных минут', () =>
+  assert.equal(autosaved.played_minutes, 0),
+);
+
+// --- выход сохраняет состояние ---
+player4.position = { x: 555.5, y: 666.25, z: 77.75 };
+player4.heading = 180.25;
+player4.health = 55;
+disconnect(player4);
+
+await new Promise((resolve) => setTimeout(resolve, 600));
+
+const afterQuitState = await readState();
+check('выход сохранил позицию', () => {
+  assert.equal(Number(afterQuitState.position_x).toFixed(3), '555.500');
+  assert.equal(Number(afterQuitState.position_y).toFixed(3), '666.250');
+});
+check('выход сохранил здоровье и поворот', () => {
+  assert.equal(afterQuitState.health, 55);
+  assert.equal(Number(afterQuitState.heading).toFixed(2), '180.25');
+});
+
 const afterQuit = await rpc(player4, 'eclipse:character:list', {});
 check('после отключения RPC недоступны', () => assert.equal(afterQuit.code, 'UNAUTHORIZED'));
+
+// --- переподключение возвращает игрока туда, где он вышел ---
+const player6 = connect(5, 'TestPlayer4');
+const reLogin = await rpc(player6, 'eclipse:auth:login', {
+  login: 'test_user',
+  password: 'correct horse battery',
+});
+check('повторный вход в аккаунт', () => assert.equal(reLogin.ok, true));
+
+const reSelect = await rpc(player6, 'eclipse:character:select', { characterId });
+check('повторный выбор персонажа успешен', () => assert.equal(reSelect.ok, true));
+check('персонаж восстановлен в сохранённой точке', () => {
+  assert.ok(player6.position, 'позиция не установлена');
+  assert.equal(player6.position.x.toFixed(3), '555.500');
+  assert.equal(player6.position.z.toFixed(3), '77.750');
+});
+check('восстановлено сохранённое здоровье', () => assert.equal(player6.health, 55));
+
+// --- состояние здоровья не сбрасывается спавном ---
+check('спавн не вернул здоровье к максимуму', () => assert.notEqual(player6.health, 100));
+
+// --- деньги не входят в снимок состояния ---
+await db.query('UPDATE characters SET cash = 12345.67 WHERE id = $1', [characterId]);
+player6.position = { x: 1.5, y: 2.5, z: 3.5 };
+await new Promise((resolve) => setTimeout(resolve, 2600));
+
+const afterMoneyChange = await db.query('SELECT cash, position_x FROM characters WHERE id = $1', [
+  characterId,
+]);
+check('автосохранение не затирает деньги устаревшим снимком', () =>
+  assert.equal(Number(afterMoneyChange.rows[0].cash).toFixed(2), '12345.67'),
+);
+check('при этом позиция всё равно сохраняется', () =>
+  assert.equal(Number(afterMoneyChange.rows[0].position_x).toFixed(3), '1.500'),
+);
+
+// --- начисление наигранного времени ---
+//
+// Реальную сессию длиной в минуты в тесте не выждать, поэтому время сдвигается
+// подменой Date.now. Серверный бандл живёт в этом же процессе и берёт время
+// оттуда же, так что для него сдвиг неотличим от настоящего.
+await db.query('UPDATE characters SET played_minutes = 100 WHERE id = $1', [characterId]);
+
+const realNow = Date.now;
+Date.now = () => realNow() + 5 * 60_000;
+
+await new Promise((resolve) => setTimeout(resolve, 2600));
+
+const afterPlaytime = await db.query('SELECT played_minutes FROM characters WHERE id = $1', [
+  characterId,
+]);
+check('наигранное время прибавляется к существующему, а не заменяет его', () =>
+  assert.equal(afterPlaytime.rows[0].played_minutes, 105),
+);
+
+// Возврат времени назад: точка отсчёта уже сдвинута вперёд, поэтому следующее
+// сохранение обязано начислить ноль, а не отрицательные минуты.
+Date.now = realNow;
+await new Promise((resolve) => setTimeout(resolve, 2600));
+
+const afterRewind = await db.query('SELECT played_minutes FROM characters WHERE id = $1', [
+  characterId,
+]);
+check('повторное сохранение не начисляет те же минуты дважды', () =>
+  assert.equal(afterRewind.rows[0].played_minutes, 105),
+);
+
+// --- гонка: переподключение быстрее, чем завершилось сохранение ---
+//
+// Игрок выходит и тут же заходит снова. Сохранение предыдущей сессии в этот
+// момент ещё выполняется. Без блокировки по персонажу вход прочитал бы
+// устаревшую позицию, а запоздавшая запись затёрла бы её обратно.
+const player7 = connect(6, 'TestPlayer4');
+const raceLogin = await rpc(player7, 'eclipse:auth:login', {
+  login: 'test_user',
+  password: 'correct horse battery',
+});
+check('вход перед проверкой гонки выполнен', () => assert.equal(raceLogin.ok, true));
+
+player6.position = { x: 321.5, y: 654.25, z: 88.5 };
+player6.health = 63;
+
+// Никаких пауз между выходом и входом: сохранение ещё в очереди.
+disconnect(player6);
+const raceSelect = await rpc(player7, 'eclipse:character:select', { characterId });
+
+check('вход после мгновенного переподключения успешен', () => assert.equal(raceSelect.ok, true));
+check('гонка не привела к откату позиции', () => {
+  assert.equal(player7.position.x.toFixed(3), '321.500');
+  assert.equal(player7.position.z.toFixed(3), '88.500');
+});
+check('гонка не привела к откату здоровья', () => assert.equal(player7.health, 63));
+
+// --- остановка сервера сохраняет всех, кто в мире ---
+player7.position = { x: 999.5, y: 888.5, z: 44.25 };
+process.emit('SIGTERM');
+await new Promise((resolve) => setTimeout(resolve, 1200));
+
+const afterShutdown = await db.query('SELECT position_x FROM characters WHERE id = $1', [characterId]);
+check('остановка сервера сохранила состояние игроков', () =>
+  assert.equal(Number(afterShutdown.rows[0].position_x).toFixed(3), '999.500'),
+);
 
 await db.end();
 

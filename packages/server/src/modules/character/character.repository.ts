@@ -110,6 +110,48 @@ export const insertCharacter = async (params: {
     .returning(COLUMNS)
     .executeTakeFirstOrThrow() as unknown as Promise<CharacterRow>;
 
+/**
+ * Запись состояния мира и наигранного времени.
+ *
+ * Наигранное время прибавляется выражением `played_minutes + N`, а не
+ * присваиванием посчитанного значения: иначе параллельная запись из другого
+ * источника была бы потеряна. Деньги здесь не участвуют — см. character.state.ts.
+ */
+export const saveState = async (state: {
+  characterId: number;
+  position: { x: number; y: number; z: number } | null;
+  heading: number | null;
+  dimension: number | null;
+  health: number | null;
+  armour: number | null;
+  playedMinutes: number;
+}): Promise<void> => {
+  await db()
+    .updateTable('characters')
+    .set((eb) => {
+      const values: Record<string, unknown> = { updated_at: new Date() };
+
+      if (state.position) {
+        values['position_x'] = String(state.position.x.toFixed(3));
+        values['position_y'] = String(state.position.y.toFixed(3));
+        values['position_z'] = String(state.position.z.toFixed(3));
+      }
+      if (state.heading !== null) values['heading'] = String(state.heading.toFixed(2));
+      if (state.dimension !== null) values['dimension'] = state.dimension;
+      if (state.health !== null) values['health'] = state.health;
+      if (state.armour !== null) values['armour'] = state.armour;
+
+      if (state.playedMinutes > 0) {
+        values['played_minutes'] = eb('played_minutes', '+', state.playedMinutes);
+      }
+
+      return values as never;
+    })
+    .where('id', '=', state.characterId)
+    .where('deleted_at', 'is', null)
+    .execute();
+};
+
 export const markPlayed = async (characterId: number): Promise<void> => {
   await db()
     .updateTable('characters')

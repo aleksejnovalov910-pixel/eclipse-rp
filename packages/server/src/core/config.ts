@@ -69,6 +69,10 @@ export interface EclipseConfig {
     readonly maxAttempts: number;
     readonly lockoutSeconds: number;
   };
+  readonly world: {
+    /** Период автосохранения играющих. 0 отключает его полностью. */
+    readonly autosaveSeconds: number;
+  };
 }
 
 let cached: EclipseConfig | null = null;
@@ -99,6 +103,11 @@ export const loadConfig = (): EclipseConfig => {
     auth: {
       maxAttempts: asInt('AUTH_MAX_ATTEMPTS', 5),
       lockoutSeconds: asInt('AUTH_LOCKOUT_SECONDS', 300),
+    },
+    world: {
+      // Три минуты: потеря такого объёма прогресса при краше терпима,
+      // а нагрузка на базу остаётся незаметной даже на большом онлайне.
+      autosaveSeconds: asInt('AUTOSAVE_SECONDS', 180),
     },
   };
 

@@ -6,6 +6,7 @@ import { connectDatabase, disconnectDatabase } from './infra/db';
 import { cache } from './infra/cache';
 import { registerAccountModule } from './modules/account/account.controller';
 import { registerCharacterModule } from './modules/character/character.controller';
+import { persist, saveAll, snapshot, startAutosave, stopAutosave } from './modules/character/character.state';
 
 /**
  * Точка входа server-side пакета ECLIPSE RP.
@@ -55,6 +56,7 @@ const bootstrap = async (): Promise<void> => {
 
   registerAccountModule();
   registerCharacterModule();
+  startAutosave(config.world.autosaveSeconds);
 
   ready = true;
   log.info('сервер готов принимать игроков');
@@ -91,19 +93,50 @@ const registerLifecycle = (): void => {
   });
 
   mp.events.add('playerQuit', (player: PlayerMp, exitType: string, reason: string) => {
-    const session = sessions.close(player);
+    const session = sessions.get(player);
+
+    /**
+     * Снимок снимается СИНХРОННО, до закрытия сессии и до любого await.
+     * Сущность игрока валидна только внутри этого обработчика: после первой
+     * асинхронной паузы обращение к player.position уже может выбросить
+     * исключение, и состояние будет потеряно именно у тех, кто вылетел.
+     */
+    const state = session ? snapshot(player, session) : null;
+
+    sessions.close(player);
     log.info(`отключился ${player.socialClub} (${exitType}${reason ? `: ${reason}` : ''})`);
 
-    if (session?.characterId) {
-      // PHASE 2: здесь будет сохранение состояния персонажа.
-      // Пока персонажей нет, сохранять нечего — заглушка не создаётся намеренно.
+    if (state) {
+      void persist(state).catch((error) => {
+        log.error(`не удалось сохранить персонажа ${state.characterId} при выходе`, error);
+      });
     }
   });
 };
 
+let shuttingDown = false;
+
+/**
+ * Остановка сервера.
+ *
+ * Порядок обязателен: сначала перестаём принимать новых игроков, затем
+ * сохраняем всех, кто в мире, и только потом закрываем соединение с базой.
+ * Закрыть базу раньше — значит гарантированно потерять прогресс всего онлайна.
+ */
 const shutdown = async (signal: string): Promise<void> => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
   log.warn(`получен ${signal}, завершение работы`);
   ready = false;
+  stopAutosave();
+
+  try {
+    await saveAll('остановка сервера');
+  } catch (error) {
+    log.error('ошибка при сохранении игроков перед остановкой', error);
+  }
+
   try {
     await disconnectDatabase();
   } catch (error) {

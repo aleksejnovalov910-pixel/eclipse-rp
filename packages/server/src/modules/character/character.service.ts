@@ -12,6 +12,7 @@ import {
 import { createLogger } from '../../core/logger';
 import type { Session } from '../../core/session';
 import * as repo from './character.repository';
+import { withCharacterLock } from './character.state';
 import { validateGender, validateName, validateSlot } from './character.validation';
 
 const log = createLogger('character');
@@ -133,7 +134,16 @@ export const select = async (session: Session, characterId: unknown): Promise<Re
 
   if (!Number.isInteger(characterId)) return err(ErrorCode.Validation, { field: 'characterId' });
 
-  const row = await repo.findOwned(characterId as number, session.accountId);
+  /**
+   * Чтение под той же блокировкой, что и сохранение.
+   *
+   * Игрок может переподключиться быстрее, чем завершится запись состояния
+   * предыдущей сессии. Без ожидания мы прочитали бы устаревшую позицию, а
+   * запоздавшее сохранение затёрло бы её обратно.
+   */
+  const row = await withCharacterLock(characterId as number, () =>
+    repo.findOwned(characterId as number, session.accountId as number),
+  );
   if (!row) return err(ErrorCode.CharacterNotFound);
 
   session.characterId = row.id;

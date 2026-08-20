@@ -11,6 +11,7 @@ import { onRpc } from '../../core/rpc';
 import { createLogger } from '../../core/logger';
 import { PLAYER_MODELS } from '../../config/world';
 import * as service from './character.service';
+import { beginTracking } from './character.state';
 
 /**
  * Транспортный слой модуля персонажей.
@@ -59,7 +60,8 @@ export const registerCharacterModule = (): void => {
     if (!result.ok) return result;
 
     spawn(ctx.player, result.data);
-    ctx.session.state = SessionState.Playing;
+    // Отсчёт наигранного времени начинается только после успешного спавна.
+    beginTracking(ctx.session);
     ctx.player.call(ServerEvent.SessionState, [SessionState.Playing]);
 
     return { ok: true, data: { characterId: result.data.characterId } };
