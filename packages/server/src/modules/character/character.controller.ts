@@ -1,0 +1,91 @@
+import {
+  RpcEvent,
+  ServerEvent,
+  SessionState,
+  type CharacterSummary,
+  type CreateCharacterRequest,
+  type Result,
+} from '@eclipse/shared';
+import { consume } from '../../core/rateLimit';
+import { onRpc } from '../../core/rpc';
+import { createLogger } from '../../core/logger';
+import { PLAYER_MODELS } from '../../config/world';
+import * as service from './character.service';
+
+/**
+ * Транспортный слой модуля персонажей.
+ *
+ * Здесь же — единственное место, где сервис встречается с сущностями
+ * RAGE MP: спавн игрока в мире. Всё, что касается правил и базы, остаётся
+ * в сервисе.
+ */
+
+const log = createLogger('character:rpc');
+
+export const registerCharacterModule = (): void => {
+  // Чтение списка дёшево, но всё равно бьёт в базу — ограничиваем.
+  const listRule = { max: 20, windowMs: 60_000 };
+  // Создание дороже и необратимо: лимит жёстче.
+  const createRule = { max: 5, windowMs: 10 * 60 * 1000 };
+  const selectRule = { max: 10, windowMs: 60_000 };
+  const nameCheckRule = { max: 30, windowMs: 60_000 };
+
+  onRpc<unknown, CharacterSummary[]>(RpcEvent.CharacterList, async (ctx): Promise<Result<CharacterSummary[]>> => {
+    const limited = consume(ctx.session, 'character:list', listRule);
+    if (limited) return limited;
+    return service.list(ctx.session);
+  });
+
+  onRpc<{ firstName: string; lastName: string }, { available: boolean }>(
+    RpcEvent.CharacterNameCheck,
+    async (ctx, payload) => {
+      const limited = consume(ctx.session, 'character:nameCheck', nameCheckRule);
+      if (limited) return limited;
+      return service.isNameAvailable(ctx.session, payload);
+    },
+  );
+
+  onRpc<CreateCharacterRequest, { characterId: number }>(RpcEvent.CharacterCreate, async (ctx, payload) => {
+    const limited = consume(ctx.session, 'character:create', createRule);
+    if (limited) return limited;
+    return service.create(ctx.session, payload);
+  });
+
+  onRpc<{ characterId: number }, { characterId: number }>(RpcEvent.CharacterSelect, async (ctx, payload) => {
+    const limited = consume(ctx.session, 'character:select', selectRule);
+    if (limited) return limited;
+
+    const result = await service.select(ctx.session, payload?.characterId);
+    if (!result.ok) return result;
+
+    spawn(ctx.player, result.data);
+    ctx.session.state = SessionState.Playing;
+    ctx.player.call(ServerEvent.SessionState, [SessionState.Playing]);
+
+    return { ok: true, data: { characterId: result.data.characterId } };
+  });
+};
+
+/**
+ * Помещение персонажа в мир.
+ *
+ * Порядок вызовов важен: модель задаётся до позиции, иначе игрок на кадр
+ * появляется стандартным Франклином в неправильной точке. Здоровье
+ * выставляется после спавна — spawn() сбрасывает его на максимум.
+ */
+const spawn = (player: PlayerMp, data: service.SpawnData): void => {
+  if (!mp.players.exists(player)) return;
+
+  try {
+    player.name = data.name;
+    player.model = mp.joaat(PLAYER_MODELS[data.gender]);
+    player.spawn(new mp.Vector3(data.position.x, data.position.y, data.position.z));
+    player.heading = data.heading;
+    player.dimension = data.dimension;
+    player.health = data.health;
+    player.armour = data.armour;
+  } catch (error) {
+    // Сбой спавна не должен оставить игрока в подвешенном состоянии молча.
+    log.error(`не удалось разместить персонажа id=${data.characterId} в мире`, error);
+  }
+};
