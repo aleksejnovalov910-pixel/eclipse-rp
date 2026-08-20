@@ -9,3 +9,4 @@ export * from './types/family';
 export * from './types/vehicle';
 export * from './types/economy';
 export * from './types/phone';
+export * from './types/quest';
