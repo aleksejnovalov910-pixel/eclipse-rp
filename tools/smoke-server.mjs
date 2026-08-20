@@ -25,23 +25,14 @@ const require = createRequire(import.meta.url);
 require('../dist/packages/eclipse/index.js');
 
 const EXPECTED = [
-  'playerJoin',
-  'playerQuit',
-  'eclipse:client:ready',
-  'eclipse:auth:login',
-  'eclipse:auth:register',
-  'eclipse:character:list',
-  'eclipse:character:create',
-  'eclipse:character:select',
-  'eclipse:character:nameCheck',
-  'eclipse:economy:balance',
-  'eclipse:economy:deposit',
-  'eclipse:economy:withdraw',
-  'eclipse:economy:transfer',
-  'eclipse:inventory:get',
-  'eclipse:inventory:move',
-  'eclipse:inventory:split',
+  'playerJoin', 'playerQuit', 'eclipse:client:ready',
+  'eclipse:auth:login', 'eclipse:auth:register',
+  'eclipse:character:list', 'eclipse:character:create', 'eclipse:character:select', 'eclipse:character:nameCheck',
+  'eclipse:economy:balance', 'eclipse:economy:deposit', 'eclipse:economy:withdraw', 'eclipse:economy:transfer',
+  'eclipse:inventory:get', 'eclipse:inventory:move', 'eclipse:inventory:split',
   'eclipse:jobs:progress',
+  'eclipse:family:get', 'eclipse:family:create',
+  'eclipse:vehicle:list',
 ];
 
 const deadline = Date.now() + 10_000;

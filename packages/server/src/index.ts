@@ -9,6 +9,8 @@ import { registerCharacterModule } from './modules/character/character.controlle
 import { registerEconomyModule } from './modules/economy/economy.controller';
 import { registerInventoryModule } from './modules/inventory/inventory.controller';
 import { registerJobModule } from './modules/jobs/job.controller';
+import { registerFamilyModule } from './modules/family/family.controller';
+import { registerVehicleModule } from './modules/vehicle/vehicle.controller';
 import { persist, saveAll, snapshot, startAutosave, stopAutosave } from './modules/character/character.state';
 
 const log = createLogger('boot');
@@ -34,6 +36,8 @@ const bootstrap = async (): Promise<void> => {
   registerEconomyModule();
   registerInventoryModule();
   registerJobModule();
+  registerFamilyModule();
+  registerVehicleModule();
   startAutosave(config.world.autosaveSeconds);
 
   ready = true;

@@ -1,6 +1,3 @@
-/**
- * Единый формат ответа для всех RPC-вызовов ECLIPSE.
- */
 export type Ok<T> = { ok: true; data: T };
 export type Err = { ok: false; code: ErrorCode; meta?: Record<string, unknown> };
 export type Result<T> = Ok<T> | Err;
@@ -36,4 +33,7 @@ export enum ErrorCode {
   InventorySlotOccupied = 'INVENTORY_SLOT_OCCUPIED',
   InventoryInvalidSlot = 'INVENTORY_INVALID_SLOT',
   InventoryInvalidQuantity = 'INVENTORY_INVALID_QUANTITY',
+
+  AlreadyInFamily = 'ALREADY_IN_FAMILY',
+  FamilyNameTaken = 'FAMILY_NAME_TAKEN',
 }

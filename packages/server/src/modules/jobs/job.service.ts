@@ -36,17 +36,13 @@ export const listProgress = async (characterId: number): Promise<JobProgressView
   });
 };
 
-/**
- * Серверный API прогресса работ. Вызывается только конкретными игровыми
- * модулями после фактически завершённого задания; RPC для начисления опыта
- * намеренно отсутствует, чтобы клиент не мог накручивать прогресс.
- */
 export const recordCompletion = async (
   characterId: number,
   jobKey: string,
   experienceGain: number,
 ): Promise<JobProgressView> => {
-  if (!JOBS[jobKey]) throw new Error('UNKNOWN_JOB');
+  const jobName = JOBS[jobKey];
+  if (!jobName) throw new Error('UNKNOWN_JOB');
   if (!Number.isInteger(experienceGain) || experienceGain <= 0 || experienceGain > 10_000) {
     throw new Error('INVALID_JOB_EXPERIENCE');
   }
@@ -85,7 +81,7 @@ export const recordCompletion = async (
 
     return {
       jobKey,
-      name: JOBS[jobKey],
+      name: jobName,
       level,
       experience,
       completed,

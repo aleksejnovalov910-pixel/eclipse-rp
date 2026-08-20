@@ -7,6 +7,8 @@ import { registerSessionModule } from './modules/session';
 import { registerEconomyModule } from './modules/economy';
 import { registerInventoryModule } from './modules/inventory';
 import { registerJobModule } from './modules/jobs';
+import { registerFamilyModule } from './modules/family';
+import { registerVehicleModule } from './modules/vehicle';
 
 mp.events.add('render', () => {
   if (!isInWorld()) mp.game.controls.disableAllControlActions(0);
@@ -32,6 +34,8 @@ mp.events.add('playerReady', () => {
   registerEconomyModule();
   registerInventoryModule();
   registerJobModule();
+  registerFamilyModule();
+  registerVehicleModule();
   prepareEntryScene();
   mp.events.callRemote('eclipse:client:ready');
 });

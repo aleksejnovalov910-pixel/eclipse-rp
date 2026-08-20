@@ -1,7 +1,4 @@
-/**
- * Контракт событий ECLIPSE.
- * Соглашение: `eclipse:<домен>:<действие>`.
- */
+/** Контракт событий ECLIPSE. */
 export const RpcEvent = {
   AuthLogin: 'eclipse:auth:login',
   AuthRegister: 'eclipse:auth:register',
@@ -20,6 +17,11 @@ export const RpcEvent = {
   InventorySplit: 'eclipse:inventory:split',
 
   JobProgress: 'eclipse:jobs:progress',
+
+  FamilyGet: 'eclipse:family:get',
+  FamilyCreate: 'eclipse:family:create',
+
+  VehicleList: 'eclipse:vehicle:list',
 } as const;
 
 export type RpcEventName = (typeof RpcEvent)[keyof typeof RpcEvent];
