@@ -21,6 +21,10 @@ export const RpcEvent = {
   EconomyDeposit: 'eclipse:economy:deposit',
   EconomyWithdraw: 'eclipse:economy:withdraw',
   EconomyTransfer: 'eclipse:economy:transfer',
+
+  InventoryGet: 'eclipse:inventory:get',
+  InventoryMove: 'eclipse:inventory:move',
+  InventorySplit: 'eclipse:inventory:split',
 } as const;
 
 export type RpcEventName = (typeof RpcEvent)[keyof typeof RpcEvent];
@@ -34,23 +38,16 @@ export const ServerEvent = {
 
 /** Client -> CEF и CEF -> Client (внутренний мост браузера). */
 export const CefEvent = {
-  /** CEF сообщает клиенту, что Vue-приложение смонтировано и готово. */
   Ready: 'eclipse:cef:ready',
-  /** CEF просит клиент выполнить RPC на сервере. */
   Rpc: 'eclipse:cef:rpc',
-  /** Клиент отдаёт CEF ответ на RPC. */
   RpcReply: 'eclipse:cef:rpcReply',
-  /** Клиент переключает активный экран в CEF. */
   Screen: 'eclipse:cef:screen',
-  /** Клиент шлёт в CEF уведомление. */
   Notify: 'eclipse:cef:notify',
 } as const;
 
 /** Служебные события транспортного слоя RPC. */
 export const RpcTransport = {
-  /** Ответ сервера клиенту: `[requestId, payloadJson]`. */
   Reply: 'eclipse:rpc:reply',
 } as const;
 
-/** Таймаут ожидания ответа сервера, мс. */
 export const RPC_TIMEOUT_MS = 15_000;
