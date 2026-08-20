@@ -79,7 +79,7 @@ export const listOwnedVehicles = async (characterId: number): Promise<VehicleVie
   return rows.map(toView);
 };
 
-const deliveryPosition = (player: PlayerMp): Vector3Mp => {
+const deliveryPosition = (player: PlayerMp): Vector3 => {
   const heading = Number.isFinite(player.heading) ? player.heading : 0;
   const radians = heading * Math.PI / 180;
   return new mp.Vector3(
@@ -110,9 +110,7 @@ export const spawnOwnedVehicle = async (
     dimension: player.dimension,
   });
 
-  const engineHealth = Number(row.engine_health);
   const bodyHealth = Number(row.body_health);
-  if (Number.isFinite(engineHealth)) entity.engineHealth = engineHealth;
   if (Number.isFinite(bodyHealth)) entity.bodyHealth = bodyHealth;
 
   spawned.set(vehicleId, { entity, ownerCharacterId: characterId, ownerPlayerId: player.id });
@@ -142,7 +140,7 @@ const persistEntity = async (vehicleId: string, entry: SpawnedVehicle): Promise<
 };
 
 export const storeOwnedVehicle = async (characterId: number, vehicleId: string): Promise<VehicleActionView> => {
-  const row = await ownedRow(characterId, vehicleId);
+  await ownedRow(characterId, vehicleId);
   cleanupStale(vehicleId);
   const entry = spawned.get(vehicleId);
   if (!entry || entry.ownerCharacterId !== characterId || !mp.vehicles.exists(entry.entity)) {
