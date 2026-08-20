@@ -10,4 +10,10 @@ export interface VehicleView {
   locked: boolean;
   impounded: boolean;
   insuranceUntil: string | null;
+  spawned: boolean;
+}
+
+export interface VehicleActionView {
+  vehicle: VehicleView;
+  spawned: boolean;
 }
