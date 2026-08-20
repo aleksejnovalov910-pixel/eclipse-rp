@@ -18,8 +18,9 @@ import { toClient } from '../core/bridge';
 import FamilyPanel from '../components/FamilyPanel.vue';
 import PropertyPanel from '../components/PropertyPanel.vue';
 import BusinessPanel from '../components/BusinessPanel.vue';
+import MarketplacePanel from '../components/MarketplacePanel.vue';
 
-type Tab = 'bank'|'inventory'|'jobs'|'quests'|'family'|'property'|'business'|'garage';
+type Tab = 'bank'|'inventory'|'jobs'|'quests'|'family'|'property'|'business'|'market'|'garage';
 const tab = ref<Tab>('bank');
 const balance = ref<BalanceView | null>(null);
 const history = ref<BankTransactionView[]>([]);
@@ -125,12 +126,13 @@ onMounted(()=>void load());
         <button :class="{active:tab==='family'}" @click="tab='family'">Семья</button>
         <button :class="{active:tab==='property'}" @click="tab='property'">Недвижимость</button>
         <button :class="{active:tab==='business'}" @click="tab='business'">Бизнес</button>
+        <button :class="{active:tab==='market'}" @click="tab='market'">V‑Market</button>
         <button :class="{active:tab==='garage'}" @click="tab='garage'">Гараж</button>
         <button class="close" @click="close">Закрыть</button>
       </aside>
       <main class="main">
         <header>
-          <div><small>ПЛАНШЕТ</small><h1>{{ {bank:'Финансы',inventory:'Инвентарь',jobs:'Работы',quests:'Задания',family:'Семья',property:'Недвижимость',business:'Бизнес',garage:'Транспорт'}[tab] }}</h1></div>
+          <div><small>ПЛАНШЕТ</small><h1>{{ {bank:'Финансы',inventory:'Инвентарь',jobs:'Работы',quests:'Задания',family:'Семья',property:'Недвижимость',business:'Бизнес',market:'V‑Market',garage:'Транспорт'}[tab] }}</h1></div>
           <button @click="load">Обновить</button>
         </header>
         <p v-if="error" class="error">{{ error }}</p>
@@ -161,6 +163,7 @@ onMounted(()=>void load());
         <FamilyPanel v-else-if="tab==='family'" />
         <PropertyPanel v-else-if="tab==='property'" />
         <BusinessPanel v-else-if="tab==='business'" />
+        <MarketplacePanel v-else-if="tab==='market'" />
 
         <template v-else>
           <div class="vehicles">
