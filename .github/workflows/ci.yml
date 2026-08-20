@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: eclipse_rp
+          POSTGRES_USER: eclipse
+          POSTGRES_PASSWORD: eclipse_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U eclipse -d eclipse_rp"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      NODE_ENV: test
+      ECLIPSE_SERVER_NAME: ECLIPSE RP CI
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_NAME: eclipse_rp
+      DB_USER: eclipse
+      DB_PASSWORD: eclipse_ci
+      DB_POOL_MAX: 10
+      REDIS_ENABLED: "false"
+      LOG_LEVEL: warn
+      AUTH_MAX_ATTEMPTS: 5
+      AUTH_LOCKOUT_SECONDS: 300
+      AUTOSAVE_SECONDS: 0
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run migrate
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run test:smoke
+      - run: npm run test:e2e
