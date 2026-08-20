@@ -1,0 +1,76 @@
+/**
+ * Базовый слой ECLIPSE.
+ *
+ * Здесь только то, что относится ко всему документу. Всё остальное живёт в
+ * компонентах — так интерфейс не превращается в один глобальный CSS-файл,
+ * который никто не рискует трогать.
+ */
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  /* CEF рисует поверх игры: фон страницы обязан быть прозрачным, иначе
+     интерфейс закроет мир сплошным прямоугольником. Затемнение делает
+     конкретный экран, которому оно нужно. */
+  background: transparent;
+  color: var(--e-text-primary);
+  font-family: var(--e-font);
+  font-size: var(--e-text-md);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  /* По умолчанию страница «прозрачна» для мыши. Интерактивные слои включают
+     события указателя сами — иначе невидимый контейнер перехватывал бы клики
+     по игровому миру. */
+  pointer-events: none;
+  user-select: none;
+}
+
+#app {
+  position: relative;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--e-accent-soft);
+}
+
+/* Скроллбар в едином стиле: системный выглядит инородно поверх игры. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--e-surface-3);
+  border-radius: var(--e-radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--e-border-strong);
+}
+
+/* Утилита: слой, который принимает ввод. */
+.e-interactive {
+  pointer-events: auto;
+}

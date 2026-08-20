@@ -1,0 +1,87 @@
+/**
+ * ECLIPSE Design System — токены.
+ *
+ * Единственное место, где объявлены цвета, тени, радиусы и тайминги.
+ * Компоненты не имеют права использовать литеральные значения: если новый
+ * интерфейс требует оттенка, которого здесь нет, значит нужно расширить
+ * систему, а не изобрести локальный стиль. Именно так интерфейсы перестают
+ * выглядеть как набор разных сайтов.
+ *
+ * Визуальная идея ECLIPSE: затмение. Глубокий холодный фон, минимум
+ * поверхностей, один тёплый акцент — как корона вокруг тёмного диска.
+ */
+:root {
+  /* --- Поверхности --- */
+  --e-bg-void: #07080c;
+  --e-bg-base: #0c0e14;
+  --e-surface-1: rgba(255, 255, 255, 0.04);
+  --e-surface-2: rgba(255, 255, 255, 0.07);
+  --e-surface-3: rgba(255, 255, 255, 0.11);
+  --e-border: rgba(255, 255, 255, 0.09);
+  --e-border-strong: rgba(255, 255, 255, 0.16);
+
+  /* --- Текст --- */
+  --e-text-primary: #f2f4f8;
+  --e-text-secondary: #a7aec0;
+  --e-text-muted: #6b7488;
+
+  /* --- Акцент (корона затмения) --- */
+  --e-accent: #ff8a3d;
+  --e-accent-strong: #ff6b1a;
+  --e-accent-soft: rgba(255, 138, 61, 0.14);
+  --e-accent-glow: rgba(255, 138, 61, 0.35);
+
+  /* --- Статусы --- */
+  --e-success: #3ddc91;
+  --e-warning: #ffc857;
+  --e-error: #ff5f6d;
+  --e-info: #58a6ff;
+
+  /* --- Радиусы --- */
+  --e-radius-sm: 6px;
+  --e-radius-md: 10px;
+  --e-radius-lg: 16px;
+  --e-radius-full: 999px;
+
+  /* --- Отступы (шаг 4px) --- */
+  --e-space-1: 4px;
+  --e-space-2: 8px;
+  --e-space-3: 12px;
+  --e-space-4: 16px;
+  --e-space-5: 24px;
+  --e-space-6: 32px;
+  --e-space-7: 48px;
+
+  /* --- Типографика --- */
+  --e-font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --e-text-xs: 11px;
+  --e-text-sm: 13px;
+  --e-text-md: 15px;
+  --e-text-lg: 19px;
+  --e-text-xl: 26px;
+  --e-text-2xl: 38px;
+  --e-tracking-wide: 0.08em;
+
+  /* --- Тени и размытие --- */
+  --e-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --e-shadow-md: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --e-shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.55);
+  --e-blur: 18px;
+
+  /* --- Анимации --- */
+  /* Быстрые и незаметные: интерфейс не должен заставлять себя ждать. */
+  --e-fast: 120ms;
+  --e-normal: 200ms;
+  --e-slow: 320ms;
+  --e-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --e-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Уважаем системную настройку: анимации не должны вредить тем, кому они мешают. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --e-fast: 1ms;
+    --e-normal: 1ms;
+    --e-slow: 1ms;
+  }
+}
