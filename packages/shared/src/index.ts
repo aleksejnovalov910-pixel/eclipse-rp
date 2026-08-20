@@ -9,6 +9,7 @@ export * from './types/family';
 export * from './types/vehicle';
 export * from './types/property';
 export * from './types/business';
+export * from './types/marketplace';
 export * from './types/economy';
 export * from './types/phone';
 export * from './types/quest';
