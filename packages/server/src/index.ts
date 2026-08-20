@@ -6,6 +6,7 @@ import { connectDatabase, disconnectDatabase } from './infra/db';
 import { cache } from './infra/cache';
 import { registerAccountModule } from './modules/account/account.controller';
 import { registerCharacterModule } from './modules/character/character.controller';
+import { registerEconomyModule } from './modules/economy/economy.controller';
 import { persist, saveAll, snapshot, startAutosave, stopAutosave } from './modules/character/character.state';
 
 /**
@@ -56,6 +57,7 @@ const bootstrap = async (): Promise<void> => {
 
   registerAccountModule();
   registerCharacterModule();
+  registerEconomyModule();
   startAutosave(config.world.autosaveSeconds);
 
   ready = true;
