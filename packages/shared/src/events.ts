@@ -8,6 +8,7 @@ export const RpcEvent = {
   CharacterNameCheck: 'eclipse:character:nameCheck',
 
   EconomyBalance: 'eclipse:economy:balance',
+  EconomyHistory: 'eclipse:economy:history',
   EconomyDeposit: 'eclipse:economy:deposit',
   EconomyWithdraw: 'eclipse:economy:withdraw',
   EconomyTransfer: 'eclipse:economy:transfer',
@@ -17,10 +18,8 @@ export const RpcEvent = {
   InventorySplit: 'eclipse:inventory:split',
 
   JobProgress: 'eclipse:jobs:progress',
-
   FamilyGet: 'eclipse:family:get',
   FamilyCreate: 'eclipse:family:create',
-
   VehicleList: 'eclipse:vehicle:list',
 } as const;
 
@@ -41,8 +40,5 @@ export const CefEvent = {
   Notify: 'eclipse:cef:notify',
 } as const;
 
-export const RpcTransport = {
-  Reply: 'eclipse:rpc:reply',
-} as const;
-
+export const RpcTransport = { Reply: 'eclipse:rpc:reply' } as const;
 export const RPC_TIMEOUT_MS = 15_000;

@@ -7,3 +7,4 @@ export * from './types/inventory';
 export * from './types/job';
 export * from './types/family';
 export * from './types/vehicle';
+export * from './types/economy';
