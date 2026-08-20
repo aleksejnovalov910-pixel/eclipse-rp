@@ -10,17 +10,8 @@ import { registerJobModule } from './modules/jobs';
 import { registerFamilyModule } from './modules/family';
 import { registerVehicleModule } from './modules/vehicle';
 import { registerPhoneModule } from './modules/phone';
+import { registerTabletModule } from './modules/tablet';
 
-mp.events.add('render', () => { if (!isInWorld()) mp.game.controls.disableAllControlActions(0); });
-
-const prepareEntryScene = (): void => {
-  const local = mp.players.local;
-  local.freezePosition(true); local.setInvincible(true); mp.game.ui.displayRadar(false); mp.gui.chat.activate(false); mp.gui.chat.show(false);
-  cef.create(); cef.screen('auth'); cef.focus(true);
-};
-
-mp.events.add('playerReady', () => {
-  installCefBridge(); registerAuthModule(); registerCharacterModule(); registerSessionModule(); registerEconomyModule();
-  registerInventoryModule(); registerJobModule(); registerFamilyModule(); registerVehicleModule(); registerPhoneModule();
-  prepareEntryScene(); mp.events.callRemote('eclipse:client:ready');
-});
+mp.events.add('render',()=>{if(!isInWorld())mp.game.controls.disableAllControlActions(0);});
+const prepareEntryScene=():void=>{const local=mp.players.local;local.freezePosition(true);local.setInvincible(true);mp.game.ui.displayRadar(false);mp.gui.chat.activate(false);mp.gui.chat.show(false);cef.create();cef.screen('auth');cef.focus(true);};
+mp.events.add('playerReady',()=>{installCefBridge();registerAuthModule();registerCharacterModule();registerSessionModule();registerEconomyModule();registerInventoryModule();registerJobModule();registerFamilyModule();registerVehicleModule();registerPhoneModule();registerTabletModule();prepareEntryScene();mp.events.callRemote('eclipse:client:ready');});
