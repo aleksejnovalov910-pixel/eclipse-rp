@@ -59,14 +59,15 @@ export const listMessages = async (characterId: number, limitInput = 100): Promi
     .where((eb) => eb.or([eb('m.sender_character_id', '=', characterId), eb('m.recipient_character_id', '=', characterId)]))
     .orderBy('m.created_at', 'desc').limit(limit).execute();
 
-  return rows.map((r) => ({
+  const messages: PhoneMessageView[] = rows.map((r): PhoneMessageView => ({
     id: r.id,
     direction: r.sender_character_id === characterId ? 'out' : 'in',
     otherPhoneNumber: r.sender_character_id === characterId ? (r.recipient_phone ?? '') : (r.sender_phone ?? ''),
     body: r.body,
     read: r.sender_character_id === characterId || r.read_at !== null,
     createdAt: r.created_at.toISOString(),
-  })).filter((m) => m.otherPhoneNumber !== profile.phoneNumber);
+  }));
+  return messages.filter((m) => m.otherPhoneNumber !== profile.phoneNumber);
 };
 
 export const sendMessage = async (characterId: number, request: PhoneSendMessageRequest): Promise<PhoneMessageView> => {

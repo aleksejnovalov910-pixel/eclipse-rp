@@ -10,6 +10,7 @@ import {
 import { consume } from '../../core/rateLimit';
 import { onRpc } from '../../core/rpc';
 import * as service from './family.service';
+import { advanceQuestSafe } from '../quests/quest.service';
 
 const mapError = (error: unknown): ErrorCode => {
   const code = error instanceof Error ? error.message : '';
@@ -39,7 +40,9 @@ export const registerFamilyModule = (): void => {
     }
     if (!payload || typeof payload.name !== 'string') return err(ErrorCode.Validation);
     try {
-      return ok(await service.createFamily(ctx.session.characterId, payload.name));
+      const family = await service.createFamily(ctx.session.characterId, payload.name);
+      await advanceQuestSafe(ctx.session.characterId, 'join_family');
+      return ok(family);
     } catch (error) {
       return err(mapError(error));
     }

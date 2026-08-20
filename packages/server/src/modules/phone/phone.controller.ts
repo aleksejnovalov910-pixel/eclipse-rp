@@ -13,6 +13,7 @@ import {
 import { consume } from '../../core/rateLimit';
 import { onRpc } from '../../core/rpc';
 import * as service from './phone.service';
+import { advanceQuestSafe } from '../quests/quest.service';
 
 const characterId = (state: SessionState, id: number | null): number | null =>
   state === SessionState.Playing && id !== null ? id : null;
@@ -33,7 +34,11 @@ export const registerPhoneModule = (): void => {
   onRpc<unknown, PhoneProfileView>(RpcEvent.PhoneProfile, async (ctx) => {
     const limited = consume(ctx.session, 'phone:profile', read); if (limited) return limited;
     const id = characterId(ctx.session.state, ctx.session.characterId); if (id === null) return err(ErrorCode.Unauthorized);
-    try { return ok(await service.getProfile(id)); } catch (error) { return err(mapError(error)); }
+    try {
+      const profile = await service.getProfile(id);
+      await advanceQuestSafe(id, 'open_phone');
+      return ok(profile);
+    } catch (error) { return err(mapError(error)); }
   });
 
   onRpc<unknown, PhoneContactView[]>(RpcEvent.PhoneContacts, async (ctx) => {

@@ -1,5 +1,6 @@
 import type { JobProgressView } from '@eclipse/shared';
 import { db } from '../../infra/db';
+import { advanceQuestSafe } from '../quests/quest.service';
 
 const JOBS: Record<string, string> = {
   builder: 'Строитель',
@@ -47,7 +48,7 @@ export const recordCompletion = async (
     throw new Error('INVALID_JOB_EXPERIENCE');
   }
 
-  return db().transaction().execute(async (trx) => {
+  const result = await db().transaction().execute(async (trx) => {
     const current = await trx
       .selectFrom('job_progress')
       .select(['level', 'experience', 'completed'])
@@ -86,6 +87,9 @@ export const recordCompletion = async (
       experience,
       completed,
       nextLevelExperience: threshold,
-    };
+    } satisfies JobProgressView;
   });
+
+  await advanceQuestSafe(characterId, 'first_job');
+  return result;
 };

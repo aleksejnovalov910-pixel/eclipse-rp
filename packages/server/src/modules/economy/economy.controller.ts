@@ -4,6 +4,7 @@ import { onRpc } from '../../core/rpc';
 import type { Session } from '../../core/session';
 import * as service from './economy.service';
 import { listBankTransactions } from './economy.history';
+import { advanceQuestSafe } from '../quests/quest.service';
 
 interface AmountRequest { amount: string; }
 interface TransferRequest extends AmountRequest { toCharacterId: number; description?: string; }
@@ -44,15 +45,21 @@ export const registerEconomyModule = (): void => {
   onRpc<AmountRequest, service.BalanceSnapshot>(RpcEvent.EconomyDeposit, async (ctx, payload) => {
     const limited = consume(ctx.session, 'economy:deposit', moneyRule); if (limited) return limited;
     const character = requirePlayingCharacter(ctx.session); if (!character.ok) return character;
-    try { await service.depositCash(character.data, payload?.amount ?? ''); return ok(await service.getBalance(character.data)); }
-    catch (error) { return mapEconomyError(error); }
+    try {
+      await service.depositCash(character.data, payload?.amount ?? '');
+      await advanceQuestSafe(character.data, 'use_bank');
+      return ok(await service.getBalance(character.data));
+    } catch (error) { return mapEconomyError(error); }
   });
 
   onRpc<AmountRequest, service.BalanceSnapshot>(RpcEvent.EconomyWithdraw, async (ctx, payload) => {
     const limited = consume(ctx.session, 'economy:withdraw', moneyRule); if (limited) return limited;
     const character = requirePlayingCharacter(ctx.session); if (!character.ok) return character;
-    try { await service.withdrawCash(character.data, payload?.amount ?? ''); return ok(await service.getBalance(character.data)); }
-    catch (error) { return mapEconomyError(error); }
+    try {
+      await service.withdrawCash(character.data, payload?.amount ?? '');
+      await advanceQuestSafe(character.data, 'use_bank');
+      return ok(await service.getBalance(character.data));
+    } catch (error) { return mapEconomyError(error); }
   });
 
   onRpc<TransferRequest, service.BalanceSnapshot>(RpcEvent.EconomyTransfer, async (ctx, payload) => {
