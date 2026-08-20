@@ -2,10 +2,11 @@
  * Дымовой тест серверного бандла.
  *
  * Настоящий RAGE MP здесь недоступен, поэтому подставляется минимальная
- * заглушка глобального `mp`. Тест проверяет ровно две вещи, которые ломаются
- * чаще всего и которые нельзя увидеть компилятором:
- *   1. бандл загружается и не падает при отсутствующей базе;
- *   2. все ожидаемые RPC-обработчики действительно зарегистрированы.
+ * заглушка глобального `mp`. Тест проверяет, что собранный бандл загружается
+ * против тестовой БД и регистрирует все обязательные обработчики.
+ *
+ * В CI параметры PostgreSQL уже переданы окружением. Здесь задаются только
+ * локальные fallback-значения — тест не должен перетирать корректный пароль CI.
  */
 import { createRequire } from 'node:module';
 
@@ -22,11 +23,12 @@ globalThis.mp = {
   },
 };
 
-process.env.DB_NAME = 'eclipse_smoke';
-process.env.DB_USER = 'eclipse';
-process.env.DB_PASSWORD = 'smoke';
-process.env.DB_HOST = '127.0.0.1';
-process.env.LOG_LEVEL = 'debug';
+process.env.DB_NAME ??= 'eclipse_smoke';
+process.env.DB_USER ??= 'eclipse';
+process.env.DB_PASSWORD ??= 'smoke';
+process.env.DB_HOST ??= '127.0.0.1';
+process.env.LOG_LEVEL ??= 'debug';
+process.env.AUTOSAVE_SECONDS ??= '0';
 
 const require = createRequire(import.meta.url);
 require('../dist/packages/eclipse/index.js');
@@ -43,13 +45,21 @@ const EXPECTED = [
   'eclipse:character:nameCheck',
 ];
 
-// Регистрация модулей идёт после await connectDatabase(), поэтому ждём,
-// пока попытка подключения завершится отказом.
-await new Promise((resolve) => setTimeout(resolve, 7000));
+const deadline = Date.now() + 10_000;
+while (Date.now() < deadline) {
+  if (EXPECTED.every((name) => registered.has(name))) break;
+  await new Promise((resolve) => setTimeout(resolve, 100));
+}
 
 const missing = EXPECTED.filter((name) => !registered.has(name));
 
 console.log('\n--- РЕЗУЛЬТАТ ДЫМОВОГО ТЕСТА ---');
 console.log('зарегистрировано событий:', registered.size);
 console.log('ожидаемые отсутствуют:', missing.length === 0 ? 'нет' : missing.join(', '));
+
+if (missing.length > 0) {
+  console.error('Дымовой тест провален: обязательные обработчики не зарегистрированы.');
+  process.exit(1);
+}
+
 process.exit(0);
