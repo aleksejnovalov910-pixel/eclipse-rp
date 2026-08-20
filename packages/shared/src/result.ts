@@ -1,10 +1,5 @@
 /**
  * Единый формат ответа для всех RPC-вызовов ECLIPSE.
- *
- * Правило проекта: сервер НИКОГДА не бросает сырое исключение в сторону
- * клиента и никогда не отдаёт наружу stack trace. Любая ошибка приводится
- * к машиночитаемому коду (`ErrorCode`), по которому CEF сам выбирает текст.
- * Это позволяет локализовать интерфейс и не утекать деталями реализации.
  */
 export type Ok<T> = { ok: true; data: T };
 export type Err = { ok: false; code: ErrorCode; meta?: Record<string, unknown> };
@@ -15,13 +10,9 @@ export const err = (code: ErrorCode, meta?: Record<string, unknown>): Err =>
   meta ? { ok: false, code, meta } : { ok: false, code };
 
 export enum ErrorCode {
-  /** Непредвиденный сбой на сервере. Детали остаются в серверных логах. */
   Internal = 'INTERNAL',
-  /** Данные не прошли валидацию. */
   Validation = 'VALIDATION',
-  /** Слишком частые запросы от игрока. */
   RateLimited = 'RATE_LIMITED',
-  /** Действие требует авторизации, но сессия не установлена. */
   Unauthorized = 'UNAUTHORIZED',
 
   AccountNotFound = 'ACCOUNT_NOT_FOUND',
@@ -39,4 +30,10 @@ export enum ErrorCode {
   InvalidAmount = 'INVALID_AMOUNT',
   InsufficientFunds = 'INSUFFICIENT_FUNDS',
   SameAccount = 'SAME_ACCOUNT',
+
+  InventoryNotFound = 'INVENTORY_NOT_FOUND',
+  InventoryItemNotFound = 'INVENTORY_ITEM_NOT_FOUND',
+  InventorySlotOccupied = 'INVENTORY_SLOT_OCCUPIED',
+  InventoryInvalidSlot = 'INVENTORY_INVALID_SLOT',
+  InventoryInvalidQuantity = 'INVENTORY_INVALID_QUANTITY',
 }
