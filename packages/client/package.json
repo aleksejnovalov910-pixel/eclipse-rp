@@ -1,0 +1,13 @@
+{
+  "name": "@eclipse/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -b"
+  },
+  "devDependencies": {
+    "@ragempcommunity/types-client": "^2.1.9"
+  }
+}
