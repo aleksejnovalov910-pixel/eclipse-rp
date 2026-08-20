@@ -16,8 +16,9 @@ import {
 import { rpc } from '../core/rpc';
 import { toClient } from '../core/bridge';
 import FamilyPanel from '../components/FamilyPanel.vue';
+import PropertyPanel from '../components/PropertyPanel.vue';
 
-type Tab = 'bank'|'inventory'|'jobs'|'quests'|'family'|'garage';
+type Tab = 'bank'|'inventory'|'jobs'|'quests'|'family'|'property'|'garage';
 const tab = ref<Tab>('bank');
 const balance = ref<BalanceView | null>(null);
 const history = ref<BankTransactionView[]>([]);
@@ -121,12 +122,13 @@ onMounted(()=>void load());
         <button :class="{active:tab==='jobs'}" @click="tab='jobs'">Работы</button>
         <button :class="{active:tab==='quests'}" @click="tab='quests'">Задания</button>
         <button :class="{active:tab==='family'}" @click="tab='family'">Семья</button>
+        <button :class="{active:tab==='property'}" @click="tab='property'">Недвижимость</button>
         <button :class="{active:tab==='garage'}" @click="tab='garage'">Гараж</button>
         <button class="close" @click="close">Закрыть</button>
       </aside>
       <main class="main">
         <header>
-          <div><small>ПЛАНШЕТ</small><h1>{{ {bank:'Финансы',inventory:'Инвентарь',jobs:'Работы',quests:'Задания',family:'Семья',garage:'Транспорт'}[tab] }}</h1></div>
+          <div><small>ПЛАНШЕТ</small><h1>{{ {bank:'Финансы',inventory:'Инвентарь',jobs:'Работы',quests:'Задания',family:'Семья',property:'Недвижимость',garage:'Транспорт'}[tab] }}</h1></div>
           <button @click="load">Обновить</button>
         </header>
         <p v-if="error" class="error">{{ error }}</p>
@@ -155,6 +157,7 @@ onMounted(()=>void load());
         </template>
 
         <FamilyPanel v-else-if="tab==='family'" />
+        <PropertyPanel v-else-if="tab==='property'" />
 
         <template v-else>
           <div class="vehicles">
