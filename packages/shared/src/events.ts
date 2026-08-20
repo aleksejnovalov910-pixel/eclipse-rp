@@ -16,6 +16,11 @@ export const RpcEvent = {
   CharacterSelect: 'eclipse:character:select',
   CharacterCreate: 'eclipse:character:create',
   CharacterNameCheck: 'eclipse:character:nameCheck',
+
+  EconomyBalance: 'eclipse:economy:balance',
+  EconomyDeposit: 'eclipse:economy:deposit',
+  EconomyWithdraw: 'eclipse:economy:withdraw',
+  EconomyTransfer: 'eclipse:economy:transfer',
 } as const;
 
 export type RpcEventName = (typeof RpcEvent)[keyof typeof RpcEvent];
