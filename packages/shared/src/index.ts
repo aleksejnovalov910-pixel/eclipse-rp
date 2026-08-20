@@ -4,3 +4,4 @@ export * from './events';
 export * from './types/auth';
 export * from './types/character';
 export * from './types/inventory';
+export * from './types/job';

@@ -1,14 +1,7 @@
 /**
  * Контракт событий ECLIPSE.
- *
- * Все имена событий объявляются ЗДЕСЬ и нигде больше. Server, Client и CEF
- * импортируют один и тот же модуль, поэтому опечатка в имени события
- * становится ошибкой компиляции, а не молчаливым «ничего не произошло».
- *
- * Соглашение об именовании: `eclipse:<домен>:<действие>`.
+ * Соглашение: `eclipse:<домен>:<действие>`.
  */
-
-/** Client -> Server RPC (запрос/ответ). */
 export const RpcEvent = {
   AuthLogin: 'eclipse:auth:login',
   AuthRegister: 'eclipse:auth:register',
@@ -25,18 +18,18 @@ export const RpcEvent = {
   InventoryGet: 'eclipse:inventory:get',
   InventoryMove: 'eclipse:inventory:move',
   InventorySplit: 'eclipse:inventory:split',
+
+  JobProgress: 'eclipse:jobs:progress',
 } as const;
 
 export type RpcEventName = (typeof RpcEvent)[keyof typeof RpcEvent];
 
-/** Server -> Client односторонние уведомления. */
 export const ServerEvent = {
   SessionState: 'eclipse:session:state',
   Notify: 'eclipse:ui:notify',
   Kick: 'eclipse:session:kick',
 } as const;
 
-/** Client -> CEF и CEF -> Client (внутренний мост браузера). */
 export const CefEvent = {
   Ready: 'eclipse:cef:ready',
   Rpc: 'eclipse:cef:rpc',
@@ -45,7 +38,6 @@ export const CefEvent = {
   Notify: 'eclipse:cef:notify',
 } as const;
 
-/** Служебные события транспортного слоя RPC. */
 export const RpcTransport = {
   Reply: 'eclipse:rpc:reply',
 } as const;

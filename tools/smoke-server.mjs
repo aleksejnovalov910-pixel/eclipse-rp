@@ -1,6 +1,4 @@
-/**
- * Дымовой тест серверного бандла.
- */
+/** Дымовой тест серверного бандла. */
 import { createRequire } from 'node:module';
 
 const registered = new Set();
@@ -43,6 +41,7 @@ const EXPECTED = [
   'eclipse:inventory:get',
   'eclipse:inventory:move',
   'eclipse:inventory:split',
+  'eclipse:jobs:progress',
 ];
 
 const deadline = Date.now() + 10_000;
@@ -52,14 +51,8 @@ while (Date.now() < deadline) {
 }
 
 const missing = EXPECTED.filter((name) => !registered.has(name));
-
 console.log('\n--- РЕЗУЛЬТАТ ДЫМОВОГО ТЕСТА ---');
 console.log('зарегистрировано событий:', registered.size);
 console.log('ожидаемые отсутствуют:', missing.length === 0 ? 'нет' : missing.join(', '));
-
-if (missing.length > 0) {
-  console.error('Дымовой тест провален: обязательные обработчики не зарегистрированы.');
-  process.exit(1);
-}
-
+if (missing.length > 0) process.exit(1);
 process.exit(0);

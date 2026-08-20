@@ -8,10 +8,10 @@ import { registerAccountModule } from './modules/account/account.controller';
 import { registerCharacterModule } from './modules/character/character.controller';
 import { registerEconomyModule } from './modules/economy/economy.controller';
 import { registerInventoryModule } from './modules/inventory/inventory.controller';
+import { registerJobModule } from './modules/jobs/job.controller';
 import { persist, saveAll, snapshot, startAutosave, stopAutosave } from './modules/character/character.state';
 
 const log = createLogger('boot');
-
 let ready = false;
 let bootFailed = false;
 
@@ -19,7 +19,6 @@ const bootstrap = async (): Promise<void> => {
   const config = loadConfig();
   setLogLevel(config.logLevel);
   log.info(`запуск ${config.serverName} (env=${config.env})`);
-
   registerLifecycle();
 
   try {
@@ -34,6 +33,7 @@ const bootstrap = async (): Promise<void> => {
   registerCharacterModule();
   registerEconomyModule();
   registerInventoryModule();
+  registerJobModule();
   startAutosave(config.world.autosaveSeconds);
 
   ready = true;
@@ -65,7 +65,6 @@ const registerLifecycle = (): void => {
   mp.events.add('playerQuit', (player: PlayerMp, exitType: string, reason: string) => {
     const session = sessions.get(player);
     const state = session ? snapshot(player, session) : null;
-
     sessions.close(player);
     log.info(`отключился ${player.socialClub} (${exitType}${reason ? `: ${reason}` : ''})`);
 
@@ -82,7 +81,6 @@ let shuttingDown = false;
 const shutdown = async (signal: string): Promise<void> => {
   if (shuttingDown) return;
   shuttingDown = true;
-
   log.warn(`получен ${signal}, завершение работы`);
   ready = false;
   stopAutosave();
@@ -102,10 +100,7 @@ const shutdown = async (signal: string): Promise<void> => {
 
 process.on('SIGINT', () => void shutdown('SIGINT'));
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
-
-process.on('unhandledRejection', (reason) => {
-  log.error('unhandledRejection', reason);
-});
+process.on('unhandledRejection', (reason) => log.error('unhandledRejection', reason));
 
 bootstrap().catch((error) => {
   log.error('критический сбой при запуске — сервер не будет работать корректно', error);
