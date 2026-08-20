@@ -1,12 +1,5 @@
 /**
  * Дымовой тест серверного бандла.
- *
- * Настоящий RAGE MP здесь недоступен, поэтому подставляется минимальная
- * заглушка глобального `mp`. Тест проверяет, что собранный бандл загружается
- * против тестовой БД и регистрирует все обязательные обработчики.
- *
- * В CI параметры PostgreSQL уже переданы окружением. Здесь задаются только
- * локальные fallback-значения — тест не должен перетирать корректный пароль CI.
  */
 import { createRequire } from 'node:module';
 
@@ -43,6 +36,13 @@ const EXPECTED = [
   'eclipse:character:create',
   'eclipse:character:select',
   'eclipse:character:nameCheck',
+  'eclipse:economy:balance',
+  'eclipse:economy:deposit',
+  'eclipse:economy:withdraw',
+  'eclipse:economy:transfer',
+  'eclipse:inventory:get',
+  'eclipse:inventory:move',
+  'eclipse:inventory:split',
 ];
 
 const deadline = Date.now() + 10_000;
