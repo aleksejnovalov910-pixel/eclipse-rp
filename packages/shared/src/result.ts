@@ -35,4 +35,8 @@ export enum ErrorCode {
   CharacterSlotTaken = 'CHARACTER_SLOT_TAKEN',
   CharacterNameTaken = 'CHARACTER_NAME_TAKEN',
   CharacterLimitReached = 'CHARACTER_LIMIT_REACHED',
+
+  InvalidAmount = 'INVALID_AMOUNT',
+  InsufficientFunds = 'INSUFFICIENT_FUNDS',
+  SameAccount = 'SAME_ACCOUNT',
 }
