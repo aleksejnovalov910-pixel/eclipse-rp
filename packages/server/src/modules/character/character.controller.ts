@@ -13,20 +13,10 @@ import { PLAYER_MODELS } from '../../config/world';
 import * as service from './character.service';
 import { beginTracking } from './character.state';
 
-/**
- * Транспортный слой модуля персонажей.
- *
- * Здесь же — единственное место, где сервис встречается с сущностями
- * RAGE MP: спавн игрока в мире. Всё, что касается правил и базы, остаётся
- * в сервисе.
- */
-
 const log = createLogger('character:rpc');
 
 export const registerCharacterModule = (): void => {
-  // Чтение списка дёшево, но всё равно бьёт в базу — ограничиваем.
   const listRule = { max: 20, windowMs: 60_000 };
-  // Создание дороже и необратимо: лимит жёстче.
   const createRule = { max: 5, windowMs: 10 * 60 * 1000 };
   const selectRule = { max: 10, windowMs: 60_000 };
   const nameCheckRule = { max: 30, windowMs: 60_000 };
@@ -60,24 +50,15 @@ export const registerCharacterModule = (): void => {
     if (!result.ok) return result;
 
     spawn(ctx.player, result.data);
-    // Отсчёт наигранного времени начинается только после успешного спавна.
     beginTracking(ctx.session);
+    ctx.player.call(ServerEvent.CharacterAppearance, [JSON.stringify(result.data.appearance)]);
     ctx.player.call(ServerEvent.SessionState, [SessionState.Playing]);
-
     return { ok: true, data: { characterId: result.data.characterId } };
   });
 };
 
-/**
- * Помещение персонажа в мир.
- *
- * Порядок вызовов важен: модель задаётся до позиции, иначе игрок на кадр
- * появляется стандартным Франклином в неправильной точке. Здоровье
- * выставляется после спавна — spawn() сбрасывает его на максимум.
- */
 const spawn = (player: PlayerMp, data: service.SpawnData): void => {
   if (!mp.players.exists(player)) return;
-
   try {
     player.name = data.name;
     player.model = mp.joaat(PLAYER_MODELS[data.gender]);
@@ -87,7 +68,6 @@ const spawn = (player: PlayerMp, data: service.SpawnData): void => {
     player.health = data.health;
     player.armour = data.armour;
   } catch (error) {
-    // Сбой спавна не должен оставить игрока в подвешенном состоянии молча.
     log.error(`не удалось разместить персонажа id=${data.characterId} в мире`, error);
   }
 };

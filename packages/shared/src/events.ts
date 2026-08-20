@@ -28,6 +28,7 @@ export type RpcEventName = (typeof RpcEvent)[keyof typeof RpcEvent];
 
 export const ServerEvent = {
   SessionState: 'eclipse:session:state',
+  CharacterAppearance: 'eclipse:character:appearance',
   Notify: 'eclipse:ui:notify',
   Kick: 'eclipse:session:kick',
 } as const;
