@@ -19,7 +19,10 @@ export const mysqlize = (source, file = '') => {
   sql = sql.replace(/\bTRUE\b/gi, '1').replace(/\bFALSE\b/gi, '0');
   sql = sql.replace(/INSERT\s+INTO([\s\S]*?)ON\s+CONFLICT\s+DO\s+NOTHING\s*;/gi, 'INSERT IGNORE INTO$1;');
 
-  // PostgreSQL partial unique indexes used for soft-delete/active rows need generated columns in MySQL.
+  // MySQL reserved identifiers used by the existing portable Kysely schema.
+  sql = sql.replace(/(^|\n)(\s*)key(\s+VARCHAR\s*\([^\n]+)/gi, '$1$2`key`$3');
+  sql = sql.replace(/item_definitions\s*\(\s*key\s*\)/gi, 'item_definitions(`key`)');
+
   if (file === '0001_init.sql') {
     sql = sql.replace(/CREATE UNIQUE INDEX characters_account_slot_key[\s\S]*?WHERE deleted_at IS NULL;/i,
       "ALTER TABLE characters ADD COLUMN active_slot SMALLINT GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN slot ELSE NULL END) STORED;\nCREATE UNIQUE INDEX characters_account_slot_key ON characters(account_id, active_slot);");
@@ -27,7 +30,6 @@ export const mysqlize = (source, file = '') => {
       "ALTER TABLE characters ADD COLUMN active_name VARCHAR(33) GENERATED ALWAYS AS (CASE WHEN deleted_at IS NULL THEN name_lower ELSE NULL END) STORED;\nCREATE UNIQUE INDEX characters_name_key ON characters(active_name);");
   }
 
-  // PostgreSQL procedural compatibility blocks are replaced by idempotent MySQL DDL in dedicated follow-up migrations.
   sql = sql.replace(/DO\s+\$\$[\s\S]*?\$\$\s*;/gi, '');
   return sql;
 };
