@@ -8,25 +8,25 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     services:
-      postgres:
-        image: postgres:16
+      mysql:
+        image: mysql:8.4
         env:
-          POSTGRES_DB: eclipse_rp
-          POSTGRES_USER: eclipse
-          POSTGRES_PASSWORD: eclipse_ci
+          MYSQL_DATABASE: eclipse_rp
+          MYSQL_USER: eclipse
+          MYSQL_PASSWORD: eclipse_ci
+          MYSQL_ROOT_PASSWORD: root_ci
         ports:
-          - 5432:5432
+          - 3306:3306
         options: >-
-          --health-cmd="pg_isready -U eclipse -d eclipse_rp"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ueclipse -peclipse_ci"
           --health-interval=5s
           --health-timeout=5s
-          --health-retries=20
-
+          --health-retries=30
     env:
       NODE_ENV: test
       ECLIPSE_SERVER_NAME: ECLIPSE RP CI
       DB_HOST: 127.0.0.1
-      DB_PORT: 5432
+      DB_PORT: 3306
       DB_NAME: eclipse_rp
       DB_USER: eclipse
       DB_PASSWORD: eclipse_ci
@@ -36,13 +36,13 @@ jobs:
       AUTH_MAX_ATTEMPTS: 5
       AUTH_LOCKOUT_SECONDS: 300
       AUTOSAVE_SECONDS: 2
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+      - run: npm install --package-lock-only
       - run: npm ci
       - run: npm audit --audit-level=high
       - run: npm run migrate
