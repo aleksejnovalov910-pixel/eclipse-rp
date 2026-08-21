@@ -6,6 +6,7 @@ export * from './types/character';
 export * from './types/inventory';
 export * from './types/job';
 export * from './types/family';
+export * from './types/organization';
 export * from './types/vehicle';
 export * from './types/property';
 export * from './types/business';
