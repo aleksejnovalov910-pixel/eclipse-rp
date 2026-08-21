@@ -1,4 +1,6 @@
-import { RpcEvent,ServerEvent,type CharacterWeaponView } from '@eclipse/shared';
-import { allowFromCef } from '../core/cefBridge';
-const apply=(payload:string):void=>{try{const weapons=JSON.parse(payload) as CharacterWeaponView[];const api=mp.game.weapon as any;api.removeAllPedWeapons(mp.players.local.handle,true);for(const w of weapons){const hash=mp.game.joaat(w.weaponName);api.giveWeaponToPed(mp.players.local.handle,hash,Math.max(0,w.ammo),false,false);}}catch{}};
-export const registerCombatModule=():void=>{allowFromCef(RpcEvent.WeaponShops,RpcEvent.WeaponShopProducts,RpcEvent.CharacterWeapons,RpcEvent.WeaponShopBuy);mp.events.add(ServerEvent.WeaponLoadout,apply);};
+import { RpcEvent,ServerEvent,type CharacterWeaponView,type WeaponAmmoSyncResult } from '@eclipse/shared';
+import { allowFromCef } from '../core/cefBridge';import { callServer } from '../core/rpc';
+let loadout:CharacterWeaponView[]=[];let syncing=false;
+const apply=(payload:string):void=>{try{const weapons=JSON.parse(payload) as CharacterWeaponView[];loadout=Array.isArray(weapons)?weapons:[];const api=mp.game.weapon as any;api.removeAllPedWeapons(mp.players.local.handle,true);for(const w of loadout){const hash=mp.game.joaat(w.weaponName);api.giveWeaponToPed(mp.players.local.handle,hash,Math.max(0,w.ammo),false,false);}}catch{loadout=[];}};
+const syncAmmo=async():Promise<void>=>{if(syncing||loadout.length===0)return;const api=mp.game.weapon as any,ped=mp.players.local.handle;const weapons=loadout.map(w=>{const hash=mp.game.joaat(w.weaponName);const raw=Number(api.getAmmoInPedWeapon(ped,hash));return{weaponKey:w.weaponKey,ammo:Number.isFinite(raw)?Math.max(0,Math.floor(raw)):w.ammo};});if(!weapons.some((w,i)=>w.ammo<loadout[i]!.ammo))return;syncing=true;try{const r=await callServer<WeaponAmmoSyncResult>(RpcEvent.WeaponAmmoSync,{weapons});if(r.ok)loadout=r.data.weapons;}finally{syncing=false;}};
+export const registerCombatModule=():void=>{allowFromCef(RpcEvent.WeaponShops,RpcEvent.WeaponShopProducts,RpcEvent.CharacterWeapons,RpcEvent.WeaponShopBuy);mp.events.add(ServerEvent.WeaponLoadout,apply);setInterval(()=>void syncAmmo(),3000);};
