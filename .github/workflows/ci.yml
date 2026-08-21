@@ -45,6 +45,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run migrate
+      - run: npm run test:schema
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test:smoke
