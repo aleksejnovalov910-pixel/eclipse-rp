@@ -51,3 +51,14 @@ jobs:
       - run: npm run build
       - run: npm run test:smoke
       - run: npm run test:e2e
+      - run: npm run host:package
+      - run: npm run host:verify
+      - name: Pack HOST TEST READY artifact
+        run: tar -czf release/eclipse-rp-host-test.tar.gz -C release/host-test .
+      - name: Upload HOST TEST READY artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eclipse-rp-host-test-${{ github.sha }}
+          path: release/eclipse-rp-host-test.tar.gz
+          if-no-files-found: error
+          retention-days: 7
