@@ -13,10 +13,17 @@ CREATE TABLE IF NOT EXISTS property_tenants (
 );
 CREATE INDEX IF NOT EXISTS property_tenants_character_idx ON property_tenants(tenant_character_id);
 
-DO $$ BEGIN
-  ALTER TABLE inventories DROP CONSTRAINT IF EXISTS inventories_owner_type_check;
-  ALTER TABLE inventories ADD CONSTRAINT inventories_owner_type_check CHECK (owner_type IN ('character','vehicle','property','business','organization','family'));
-END $$;
+-- properties use UUID ids while the shared inventory owner_id is BIGINT.
+-- Keep a permanent surrogate owner id instead of unsafe UUID casts/hashes.
+CREATE TABLE IF NOT EXISTS property_storage_owners (
+  storage_owner_id BIGSERIAL PRIMARY KEY,
+  property_id UUID NOT NULL UNIQUE REFERENCES properties(id) ON DELETE CASCADE
+);
+INSERT INTO property_storage_owners(property_id)
+SELECT id FROM properties ON CONFLICT(property_id) DO NOTHING;
+INSERT INTO inventories(owner_type,owner_id,capacity_weight,slots)
+SELECT 'property',storage_owner_id,250.000,60 FROM property_storage_owners
+ON CONFLICT(owner_type,owner_id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS property_furniture (
   id BIGSERIAL PRIMARY KEY,
@@ -37,5 +44,6 @@ CREATE TABLE IF NOT EXISTS property_garage_vehicles (
   property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
   vehicle_id BIGINT NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
   stored_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY(property_id,vehicle_id)
+  PRIMARY KEY(property_id,vehicle_id),
+  UNIQUE(vehicle_id)
 );
