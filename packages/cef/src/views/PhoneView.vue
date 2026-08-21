@@ -1,110 +1,27 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { CefEvent, RpcEvent, type PhoneContactView, type PhoneMessageView, type PhoneProfileView } from '@eclipse/shared';
-import { rpc } from '../core/rpc';
-import { toClient } from '../core/bridge';
-
-const profile = ref<PhoneProfileView | null>(null);
-const contacts = ref<PhoneContactView[]>([]);
-const messages = ref<PhoneMessageView[]>([]);
-const tab = ref<'messages'|'contacts'>('messages');
-const target = ref('');
-const body = ref('');
-const contactName = ref('');
-const busy = ref(false);
-const error = ref('');
-
-const conversations = computed(() => {
-  const map = new Map<string, PhoneMessageView[]>();
-  for (const message of [...messages.value].reverse()) {
-    const list = map.get(message.otherPhoneNumber) ?? [];
-    list.push(message);
-    map.set(message.otherPhoneNumber, list);
-  }
-  return [...map.entries()].reverse();
-});
-
-const load = async (): Promise<void> => {
-  const [p, c, m] = await Promise.all([
-    rpc<PhoneProfileView>(RpcEvent.PhoneProfile),
-    rpc<PhoneContactView[]>(RpcEvent.PhoneContacts),
-    rpc<PhoneMessageView[]>(RpcEvent.PhoneMessages, { limit: 150 }),
-  ]);
-  if (p.ok) profile.value = p.data;
-  if (c.ok) contacts.value = c.data;
-  if (m.ok) messages.value = m.data;
-};
-
-const send = async (): Promise<void> => {
-  if (busy.value) return;
-  busy.value = true; error.value = '';
-  try {
-    const result = await rpc<PhoneMessageView>(RpcEvent.PhoneSendMessage, { phoneNumber: target.value, body: body.value });
-    if (!result.ok) { error.value = result.code; return; }
-    messages.value.unshift(result.data); body.value = '';
-  } finally { busy.value = false; }
-};
-
-const saveContact = async (): Promise<void> => {
-  if (busy.value) return;
-  busy.value = true; error.value = '';
-  try {
-    const result = await rpc<PhoneContactView>(RpcEvent.PhoneContactSave, { phoneNumber: target.value, displayName: contactName.value });
-    if (!result.ok) { error.value = result.code; return; }
-    await load(); contactName.value = '';
-  } finally { busy.value = false; }
-};
-
-const contactLabel = (phone: string): string => contacts.value.find((c) => c.phoneNumber === phone)?.displayName ?? phone;
-const close = (): void => toClient(CefEvent.OverlayClose);
-onMounted(() => void load());
+import { computed,onMounted,ref } from 'vue';
+import { CefEvent,RpcEvent,type BalanceView,type BankTransactionView,type MarketplaceBidResult,type MarketplaceListingView,type MarketplacePurchaseResult,type PhoneCallHistoryView,type PhoneCallStateView,type PhoneClassifiedCategory,type PhoneClassifiedView,type PhoneContactView,type PhoneMessageView,type PhoneProfileView } from '@eclipse/shared';
+import { rpc } from '../core/rpc';import { onClient,toClient } from '../core/bridge';
+type Tab='messages'|'contacts'|'calls'|'bank'|'market'|'ads'|'gps';const profile=ref<PhoneProfileView|null>(null),contacts=ref<PhoneContactView[]>([]),messages=ref<PhoneMessageView[]>([]),callState=ref<PhoneCallStateView>({phase:'idle',peerCharacterId:null,peerPhoneNumber:null,peerName:null,startedAt:null}),callHistory=ref<PhoneCallHistoryView[]>([]),balance=ref<BalanceView|null>(null),bankHistory=ref<BankTransactionView[]>([]),market=ref<MarketplaceListingView[]>([]),ads=ref<PhoneClassifiedView[]>([]),tab=ref<Tab>('messages'),target=ref(''),body=ref(''),contactName=ref(''),busy=ref(false),error=ref(''),notice=ref('');
+const transferId=ref(''),transferAmount=ref(''),marketSearch=ref(''),bidAmount=ref<Record<string,string>>({}),adCategory=ref<PhoneClassifiedCategory>('general'),adTitle=ref(''),adBody=ref(''),adPrice=ref(''),gpsX=ref(''),gpsY=ref('');
+const conversations=computed(()=>{const map=new Map<string,PhoneMessageView[]>();for(const m of [...messages.value].reverse()){const list=map.get(m.otherPhoneNumber)??[];list.push(m);map.set(m.otherPhoneNumber,list);}return[...map.entries()].reverse();});
+const load=async()=>{const[p,c,m,cs,ch,ba,bh,ma,ad]=await Promise.all([rpc<PhoneProfileView>(RpcEvent.PhoneProfile),rpc<PhoneContactView[]>(RpcEvent.PhoneContacts),rpc<PhoneMessageView[]>(RpcEvent.PhoneMessages,{limit:150}),rpc<PhoneCallStateView>(RpcEvent.PhoneCallState),rpc<PhoneCallHistoryView[]>(RpcEvent.PhoneCallHistory),rpc<BalanceView>(RpcEvent.EconomyBalance),rpc<BankTransactionView[]>(RpcEvent.EconomyHistory,{limit:40}),rpc<MarketplaceListingView[]>(RpcEvent.MarketList,{query:marketSearch.value,limit:50}),rpc<PhoneClassifiedView[]>(RpcEvent.PhoneClassifieds)]);if(p.ok)profile.value=p.data;if(c.ok)contacts.value=c.data;if(m.ok)messages.value=m.data;if(cs.ok)callState.value=cs.data;if(ch.ok)callHistory.value=ch.data;if(ba.ok)balance.value=ba.data;if(bh.ok)bankHistory.value=bh.data;if(ma.ok)market.value=ma.data;if(ad.ok)ads.value=ad.data;};
+const run=async<T>(event:string,payload:unknown,msg=''):Promise<T|null>=>{if(busy.value)return null;busy.value=true;error.value='';notice.value='';try{const r=await rpc<T>(event,payload);if(!r.ok){error.value=r.code;return null;}if(msg)notice.value=msg;return r.data;}finally{busy.value=false;}};
+const send=async()=>{const r=await run<PhoneMessageView>(RpcEvent.PhoneSendMessage,{phoneNumber:target.value,body:body.value});if(r){messages.value.unshift(r);body.value='';}};const saveContact=async()=>{if(await run<PhoneContactView>(RpcEvent.PhoneContactSave,{phoneNumber:target.value,displayName:contactName.value},'Контакт сохранён')){contactName.value='';await load();}};
+const call=async()=>{const r=await run<PhoneCallStateView>(RpcEvent.PhoneCallStart,{phoneNumber:target.value});if(r){callState.value=r;tab.value='calls';}};const answer=async()=>{const r=await run<PhoneCallStateView>(RpcEvent.PhoneCallAnswer,{});if(r)callState.value=r;};const hangup=async()=>{const r=await run<PhoneCallStateView>(RpcEvent.PhoneCallEnd,{});if(r){callState.value=r;await load();}};
+const transfer=async()=>{const r=await run<BalanceView>(RpcEvent.EconomyTransfer,{toCharacterId:Number(transferId.value),amount:transferAmount.value,description:'Перевод из телефона'},'Перевод выполнен');if(r){balance.value=r;transferAmount.value='';await load();}};
+const refreshMarket=async()=>{const r=await rpc<MarketplaceListingView[]>(RpcEvent.MarketList,{query:marketSearch.value,limit:50});if(r.ok)market.value=r.data;};const buy=async(id:string)=>{if(await run<MarketplacePurchaseResult>(RpcEvent.MarketBuy,{listingId:id},'Покупка завершена'))await refreshMarket();};const bid=async(id:string)=>{if(await run<MarketplaceBidResult>(RpcEvent.MarketBid,{listingId:id,amount:bidAmount.value[id]??''},'Ставка принята')){bidAmount.value[id]='';await refreshMarket();}};
+const createAd=async()=>{if(await run<PhoneClassifiedView>(RpcEvent.PhoneClassifiedCreate,{category:adCategory.value,title:adTitle.value,body:adBody.value,price:adPrice.value||null},'Объявление опубликовано')){adTitle.value='';adBody.value='';adPrice.value='';await load();}};const deleteAd=async(id:string)=>{if(await run(RpcEvent.PhoneClassifiedDelete,{id},'Объявление удалено'))await load();};
+const setGps=(x:number,y:number)=>toClient(CefEvent.PhoneGpsSet,{x,y});const customGps=()=>{const x=Number(gpsX.value),y=Number(gpsY.value);if(Number.isFinite(x)&&Number.isFinite(y))setGps(x,y);};const contactLabel=(phone:string)=>contacts.value.find(c=>c.phoneNumber===phone)?.displayName??phone;const close=()=>toClient(CefEvent.OverlayClose);const money=(v:string|null|undefined)=>Number(v??0).toLocaleString('ru-RU',{maximumFractionDigits:2});
+onClient(CefEvent.PhoneCallState,p=>{callState.value=p as PhoneCallStateView;if(callState.value.phase==='incoming')tab.value='calls';});onMounted(()=>void load());
 </script>
-
-<template>
-  <div class="phone-shell e-interactive">
-    <section class="phone">
-      <header class="phone__top">
-        <div><span class="brand">ECLIPSE</span><strong>{{ profile?.phoneNumber ?? '•••••••' }}</strong></div>
-        <button class="icon" @click="close">×</button>
-      </header>
-      <nav class="tabs">
-        <button :class="{active:tab==='messages'}" @click="tab='messages'">Сообщения</button>
-        <button :class="{active:tab==='contacts'}" @click="tab='contacts'">Контакты</button>
-      </nav>
-
-      <main v-if="tab==='messages'" class="content">
-        <div class="compose">
-          <input v-model="target" placeholder="Номер телефона" maxlength="10">
-          <textarea v-model="body" placeholder="Сообщение" maxlength="500" />
-          <button :disabled="busy || !target || !body.trim()" @click="send">Отправить</button>
-        </div>
-        <p v-if="error" class="error">{{ error }}</p>
-        <div class="conversations">
-          <article v-for="[phone, list] in conversations" :key="phone" class="conversation" @click="target=phone">
-            <div class="avatar">{{ contactLabel(phone).slice(0,1).toUpperCase() }}</div>
-            <div class="meta"><strong>{{ contactLabel(phone) }}</strong><span>{{ list[list.length-1]?.body }}</span></div>
-            <small>{{ list.length }}</small>
-          </article>
-          <p v-if="!conversations.length" class="empty">Сообщений пока нет</p>
-        </div>
-      </main>
-
-      <main v-else class="content">
-        <div class="compose contact-form">
-          <input v-model="target" placeholder="Номер телефона" maxlength="10">
-          <input v-model="contactName" placeholder="Имя контакта" maxlength="40">
-          <button :disabled="busy || !target || !contactName.trim()" @click="saveContact">Сохранить</button>
-        </div>
-        <article v-for="contact in contacts" :key="contact.id" class="conversation" @click="target=contact.phoneNumber;tab='messages'">
-          <div class="avatar">{{ contact.displayName.slice(0,1).toUpperCase() }}</div>
-          <div class="meta"><strong>{{ contact.displayName }}</strong><span>{{ contact.phoneNumber }}</span></div>
-        </article>
-        <p v-if="!contacts.length" class="empty">Добавьте первый контакт</p>
-      </main>
-    </section>
-  </div>
-</template>
-
-<style scoped>
-.phone-shell{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-end;padding:4vh 3vw;pointer-events:none}.phone{pointer-events:auto;width:360px;height:680px;display:flex;flex-direction:column;background:rgba(10,12,18,.97);border:1px solid var(--e-border);border-radius:38px;box-shadow:var(--e-shadow-lg);overflow:hidden}.phone__top{display:flex;justify-content:space-between;align-items:center;padding:24px 22px 14px}.phone__top>div{display:flex;flex-direction:column}.brand{font-size:10px;letter-spacing:.18em;color:var(--e-accent)}.phone__top strong{font-size:13px;margin-top:2px}.icon{width:34px;height:34px;border:0;border-radius:50%;background:var(--e-surface-2);color:var(--e-text-primary);font-size:22px}.tabs{display:grid;grid-template-columns:1fr 1fr;padding:0 16px 12px;gap:8px}.tabs button{height:38px;border:0;border-radius:12px;background:var(--e-surface-1);color:var(--e-text-muted)}.tabs button.active{background:var(--e-accent-soft);color:var(--e-text-primary)}.content{flex:1;overflow:auto;padding:0 16px 20px}.compose{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:var(--e-surface-1);margin-bottom:12px}.compose input,.compose textarea{border:1px solid var(--e-border);border-radius:10px;background:var(--e-surface-0);color:var(--e-text-primary);padding:10px 12px;resize:none}.compose textarea{height:70px}.compose button{height:36px;border:0;border-radius:10px;background:var(--e-accent);color:white;font-weight:700}.compose button:disabled{opacity:.45}.conversation{display:flex;align-items:center;gap:11px;padding:11px 6px;border-bottom:1px solid var(--e-border);cursor:pointer}.avatar{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;background:var(--e-accent-soft);font-weight:700}.meta{min-width:0;flex:1;display:flex;flex-direction:column}.meta strong{font-size:13px}.meta span{font-size:11px;color:var(--e-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.conversation small{color:var(--e-text-muted)}.empty,.error{text-align:center;color:var(--e-text-muted);font-size:12px}.error{color:#ff7474}.contact-form{margin-top:4px}
-</style>
+<template><div class="phone-shell e-interactive"><section class="phone"><header><div><span class="brand">ECLIPSE</span><strong>{{profile?.phoneNumber??'•••••••'}}</strong></div><button class="icon" @click="close">×</button></header><nav><button v-for="t in ([['messages','SMS'],['contacts','Контакты'],['calls','Звонки'],['bank','Банк'],['market','V‑Market'],['ads','Объявления'],['gps','GPS']] as const)" :key="t[0]" :class="{active:tab===t[0]}" @click="tab=t[0]">{{t[1]}}</button></nav><main><p v-if="error" class="error">{{error}}</p><p v-if="notice" class="ok">{{notice}}</p>
+<template v-if="tab==='messages'"><div class="box"><input v-model="target" placeholder="Номер"><textarea v-model="body" placeholder="Сообщение" maxlength="500"/><div class="row"><button @click="send">Отправить</button><button @click="call">Позвонить</button></div></div><article v-for="[phone,list] in conversations" :key="phone" class="entry" @click="target=phone"><div><b>{{contactLabel(phone)}}</b><small>{{list[list.length-1]?.body}}</small></div><span>{{list.length}}</span></article></template>
+<template v-else-if="tab==='contacts'"><div class="box"><input v-model="target" placeholder="Номер"><input v-model="contactName" placeholder="Имя"><button @click="saveContact">Сохранить</button></div><article v-for="c in contacts" :key="c.id" class="entry" @click="target=c.phoneNumber;tab='messages'"><div><b>{{c.displayName}}</b><small>{{c.phoneNumber}}</small></div></article></template>
+<template v-else-if="tab==='calls'"><div class="call" :class="callState.phase"><small>{{callState.phase.toUpperCase()}}</small><h2>{{callState.peerName??'Нет активного звонка'}}</h2><p>{{callState.peerPhoneNumber}}</p><div class="row" v-if="callState.phase!=='idle'"><button v-if="callState.phase==='incoming'" class="accept" @click="answer">Ответить</button><button class="danger" @click="hangup">Завершить</button></div></div><div class="box" v-if="callState.phase==='idle'"><input v-model="target" placeholder="Номер телефона"><button @click="call">Позвонить</button></div><article v-for="h in callHistory" :key="h.id" class="entry" @click="target=h.otherPhoneNumber"><div><b>{{h.otherName}}</b><small>{{h.direction==='out'?'Исходящий':'Входящий'}} · {{h.status}}</small></div><time>{{new Date(h.startedAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}}</time></article></template>
+<template v-else-if="tab==='bank'"><div class="balance"><span>Банк<b>${{money(balance?.bank)}}</b></span><span>Наличные<b>${{money(balance?.cash)}}</b></span></div><div class="box"><input v-model="transferId" placeholder="Static ID получателя"><input v-model="transferAmount" placeholder="Сумма"><button @click="transfer">Перевести</button></div><article v-for="h in bankHistory" :key="h.id" class="entry"><div><b>{{h.description??h.kind}}</b><small>{{new Date(h.createdAt).toLocaleString('ru-RU')}}</small></div><strong>${{money(h.amount)}}</strong></article></template>
+<template v-else-if="tab==='market'"><div class="box row"><input v-model="marketSearch" placeholder="Поиск V‑Market"><button @click="refreshMarket">Найти</button></div><article v-for="l in market" :key="l.id" class="market-entry"><div><small>{{l.objectType}} · {{l.listingType}}</small><b>{{l.title}}<span v-if="l.quantity>1"> ×{{l.quantity}}</span></b><strong>${{money(l.currentBid??l.price)}}</strong></div><button v-if="!l.ownedByMe&&l.listingType==='fixed'" @click="buy(l.id)">Купить</button><div v-else-if="!l.ownedByMe" class="row"><input v-model="bidAmount[l.id]" placeholder="Ставка"><button @click="bid(l.id)">Ставка</button></div></article></template>
+<template v-else-if="tab==='ads'"><div class="box"><select v-model="adCategory"><option value="general">Общее</option><option value="vehicle">Авто</option><option value="property">Недвижимость</option><option value="service">Услуги</option><option value="job">Работа</option></select><input v-model="adTitle" placeholder="Заголовок"><textarea v-model="adBody" placeholder="Текст" maxlength="300"/><input v-model="adPrice" placeholder="Цена (необязательно)"><button @click="createAd">Опубликовать на 24 часа</button></div><article v-for="a in ads" :key="a.id" class="ad"><small>{{a.category}}</small><b>{{a.title}}</b><p>{{a.body}}</p><div class="row"><span>{{a.phoneNumber}} <template v-if="a.price">· ${{money(a.price)}}</template></span><button v-if="a.ownedByMe" class="danger" @click="deleteAd(a.id)">Удалить</button><button v-else @click="target=a.phoneNumber;tab='messages'">Написать</button></div></article></template>
+<template v-else><div class="gps"><button @click="setGps(441.2,-981.9)">LSPD</button><button @click="setGps(307.2,-595.4)">Pillbox Hospital</button><button @click="setGps(-545.4,-204.0)">City Hall</button></div><div class="box"><input v-model="gpsX" placeholder="X"><input v-model="gpsY" placeholder="Y"><button @click="customGps">Поставить маршрут</button></div></template>
+</main></section></div></template>
+<style scoped>.phone-shell{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-end;padding:3vh 2vw;pointer-events:none}.phone{pointer-events:auto;width:390px;height:720px;display:flex;flex-direction:column;background:rgba(9,12,18,.98);border:1px solid var(--e-border);border-radius:34px;overflow:hidden;box-shadow:var(--e-shadow-lg)}header{display:flex;justify-content:space-between;align-items:center;padding:20px 20px 10px}header>div{display:grid}.brand{font-size:9px;letter-spacing:.2em;color:var(--e-accent)}header strong{font-size:12px}.icon{width:32px;height:32px;border-radius:50%;font-size:20px}nav{display:flex;gap:5px;overflow:auto;padding:6px 12px 10px}nav button{white-space:nowrap;font-size:10px}nav button.active{border-color:var(--e-accent);color:#fff}main{flex:1;overflow:auto;padding:4px 14px 18px}.box{display:grid;gap:7px;padding:10px;background:var(--e-surface-1);border-radius:13px;margin-bottom:10px}.row{display:flex!important;gap:6px;align-items:center}.row>*{flex:1}input,textarea,select,button{border:1px solid var(--e-border);border-radius:9px;background:var(--e-surface-2);color:var(--e-text-primary);padding:9px}textarea{resize:none;height:58px}button{cursor:pointer}.entry,.market-entry,.ad{padding:10px 4px;border-bottom:1px solid var(--e-border)}.entry{display:flex;justify-content:space-between;align-items:center}.entry div,.market-entry>div,.ad{display:grid;gap:2px}.entry small,.market-entry small,.ad small,time,p,span{font-size:10px;color:var(--e-text-muted)}.market-entry{display:grid;gap:7px}.market-entry>div:first-child{grid-template-columns:1fr auto}.market-entry b,.market-entry small{grid-column:1}.market-entry strong{grid-column:2;grid-row:1/3}.balance{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.balance span{padding:12px;background:var(--e-surface-1);border-radius:12px}.balance b{display:block;color:#fff;font-size:16px}.call{text-align:center;padding:30px 10px;margin-bottom:12px;border-radius:18px;background:var(--e-surface-1)}.call h2{margin:7px}.accept{color:#7dde9f}.danger,.error{color:#ff8585}.ok{color:#7dde9f}.gps{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.gps button{padding:18px 8px}.ad p{margin:5px 0}.error,.ok{text-align:center;font-size:11px}</style>
