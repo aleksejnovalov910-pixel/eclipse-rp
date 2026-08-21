@@ -11,7 +11,7 @@ export interface PropertyRentRequest extends PropertyActionRequest { days:number
 export interface PropertyTaxRequest extends PropertyActionRequest { days:number; }
 export interface PropertyStorageTransferRequest extends PropertyActionRequest { itemId:string;quantity:number;direction:'deposit'|'withdraw'; }
 export interface PropertyFurnitureView { id:string;propertyId:string;model:string;x:number;y:number;z:number;rx:number;ry:number;rz:number; }
-export interface PropertyFurniturePlaceRequest extends PropertyActionRequest { model:string;x:number;y:number;z:number;rx:number;ry:number;rz:number; }
+export interface PropertyFurniturePlaceRequest extends PropertyActionRequest { model:string;rotationZ?:number; }
 export interface PropertyFurnitureRemoveRequest extends PropertyActionRequest { furnitureId:string; }
 export interface PropertyGarageView { propertyId:string;slots:number;vehicleIds:string[]; }
 export interface PropertyGarageVehicleRequest extends PropertyActionRequest { vehicleId:string; }
