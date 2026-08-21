@@ -17,6 +17,11 @@ export interface FamilyRanksTable { id:Generated<string>;family_id:string;rank_i
 export interface FamilyMembersTable { family_id:string;character_id:number;rank_id:string;contribution:Generated<number>;joined_at:Timestamp; }
 export interface FamilyContractsTable { id:Generated<string>;family_id:string;contract_key:string;progress:Generated<number>;target:number;reward_money:Generated<string>;reward_reputation:Generated<number>;expires_at:Timestamp;completed_at:TimestampNullable;created_at:Timestamp; }
 export interface FamilyAuditLogTable { id:Generated<string>;family_id:string;actor_character_id:number|null;target_character_id:number|null;action:string;metadata:Generated<JsonValue>;created_at:Timestamp; }
+export interface OrganizationsTable { id:Generated<string>;key:string;name:string;kind:string;color:Generated<number>;settings:Generated<JsonValue>;created_at:Timestamp; }
+export interface OrganizationRanksTable { id:Generated<string>;organization_id:string;rank_index:number;name:string;salary:Generated<string>;permissions:Generated<JsonValue>; }
+export interface OrganizationMembersTable { organization_id:string;character_id:number;rank_id:string;on_duty:Generated<boolean>;joined_at:Timestamp;updated_at:Timestamp; }
+export interface OrganizationCallsTable { id:Generated<string>;organization_kind:string;caller_character_id:number|null;assigned_character_id:number|null;status:Generated<string>;message:string;position_x:string;position_y:string;position_z:string;created_at:Timestamp;updated_at:Timestamp;closed_at:TimestampNullable; }
+export interface OrganizationAuditLogTable { id:Generated<string>;organization_id:string|null;actor_character_id:number|null;target_character_id:number|null;action:string;metadata:Generated<JsonValue>;created_at:Timestamp; }
 export interface JobProgressTable { character_id:number;job_key:string;level:Generated<number>;experience:Generated<number>;completed:Generated<number>;updated_at:Timestamp; }
 export interface EconomyLedgerTable { id:Generated<string>;character_id:number|null;family_id:string|null;source:string;direction:string;amount:string;metadata:Generated<JsonValue>;created_at:Timestamp; }
 export interface PhoneContactsTable { id:Generated<string>;owner_character_id:number;phone_number:string;display_name:string;created_at:Timestamp;updated_at:Timestamp; }
@@ -29,6 +34,7 @@ export interface Database {
   accounts:AccountsTable;characters:CharactersTable;auth_log:AuthLogTable;bank_transactions:BankTransactionsTable;
   item_definitions:ItemDefinitionsTable;inventories:InventoriesTable;inventory_items:InventoryItemsTable;vehicles:VehiclesTable;
   families:FamiliesTable;family_ranks:FamilyRanksTable;family_members:FamilyMembersTable;family_contracts:FamilyContractsTable;family_audit_log:FamilyAuditLogTable;
+  organizations:OrganizationsTable;organization_ranks:OrganizationRanksTable;organization_members:OrganizationMembersTable;organization_calls:OrganizationCallsTable;organization_audit_log:OrganizationAuditLogTable;
   job_progress:JobProgressTable;economy_ledger:EconomyLedgerTable;phone_contacts:PhoneContactsTable;phone_messages:PhoneMessagesTable;
   quest_definitions:QuestDefinitionsTable;quest_progress:QuestProgressTable;_migrations:MigrationsTable;
 }
