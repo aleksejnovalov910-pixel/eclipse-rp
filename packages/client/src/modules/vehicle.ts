@@ -14,6 +14,9 @@ export const registerVehicleModule = (): void => {
     RpcEvent.VehicleServiceShops,
     RpcEvent.VehicleRepairQuote,
     RpcEvent.VehicleRepair,
+    RpcEvent.VehicleTuningOptions,
+    RpcEvent.VehicleTuningState,
+    RpcEvent.VehicleTuningInstall,
     RpcEvent.FuelStations,
     RpcEvent.VehicleRefuel,
   );
