@@ -62,6 +62,7 @@ SELECT b.id,p.item_key,p.base_price FROM businesses b JOIN (
   }
 
   if (file === '0028_weapon_shops.sql') {
+    sql = sql.replace(/id CHAR\(36\) PRIMARY KEY DEFAULT \(UUID\(\)\),key VARCHAR\(48\)/i, 'id CHAR(36) PRIMARY KEY DEFAULT (UUID()),`key` VARCHAR(48)');
     sql = sql.replace(/INSERT INTO weapon_shop_products\(shop_id,kind,weapon_key,name,amount,price,level_required\)[\s\S]*?;/i,
 `INSERT INTO weapon_shop_products(shop_id,kind,weapon_key,name,amount,price,level_required)
 SELECT s.id,v.kind,v.weapon_key,v.name,v.amount,v.price,v.level_required FROM weapon_shops s JOIN (
