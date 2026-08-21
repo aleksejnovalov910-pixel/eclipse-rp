@@ -14,6 +14,7 @@ import * as service from './character.service';
 import { beginTracking } from './character.state';
 import { advanceQuestSafe } from '../quests/quest.service';
 import { currentOutfit,currentTattoos } from '../customization/customization.service';
+import { custodyState } from '../publicServices/policeActions.service';
 
 const log = createLogger('character:rpc');
 
@@ -54,9 +55,14 @@ export const registerCharacterModule = (): void => {
     spawn(ctx.player, result.data);
     beginTracking(ctx.session);
     ctx.player.call(ServerEvent.CharacterAppearance, [JSON.stringify(result.data.appearance)]);
-    const [outfit,tattoos]=await Promise.all([currentOutfit(result.data.characterId),currentTattoos(result.data.characterId)]);
+    const [outfit,tattoos,custody]=await Promise.all([currentOutfit(result.data.characterId),currentTattoos(result.data.characterId),custodyState(result.data.characterId)]);
     ctx.player.call(ServerEvent.OutfitState, [JSON.stringify(outfit.components)]);
     ctx.player.call(ServerEvent.TattooState, [JSON.stringify(tattoos)]);
+    if(custody.jailedUntil&&new Date(custody.jailedUntil).getTime()>Date.now()){
+      ctx.player.position=new mp.Vector3(1690.8,2591.3,45.9);
+      ctx.player.dimension=0;
+    }
+    ctx.player.call(ServerEvent.PoliceCustodyState,[JSON.stringify(custody)]);
     ctx.player.call(ServerEvent.SessionState, [SessionState.Playing]);
     await advanceQuestSafe(result.data.characterId, 'welcome');
     return { ok: true, data: { characterId: result.data.characterId } };
