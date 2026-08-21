@@ -27,6 +27,10 @@ CREATE TABLE IF NOT EXISTS organization_uniforms (
   UNIQUE(organization_id,key,gender)
 );
 
+ALTER TABLE inventories DROP CONSTRAINT IF EXISTS inventories_owner_type_valid;
+ALTER TABLE inventories ADD CONSTRAINT inventories_owner_type_valid
+  CHECK (owner_type IN ('character','vehicle','family','property','business','organization'));
+
 INSERT INTO inventories(owner_type,owner_id,capacity_weight,slots)
 SELECT 'organization',o.id,500.000,80 FROM organizations o
 ON CONFLICT (owner_type,owner_id) DO NOTHING;
