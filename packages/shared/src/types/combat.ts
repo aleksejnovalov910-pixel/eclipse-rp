@@ -3,3 +3,6 @@ export interface WeaponShopProductView{id:string;shopId:string;kind:'weapon'|'am
 export interface CharacterWeaponView{weaponKey:string;name:string;weaponName:string;ammo:number;maxAmmo:number;}
 export interface WeaponPurchaseRequest{productId:string;}
 export interface WeaponPurchaseResult{paid:string;bank:string;armour:number;weapons:CharacterWeaponView[];}
+export interface WeaponAmmoSyncEntry{weaponKey:string;ammo:number;}
+export interface WeaponAmmoSyncRequest{weapons:WeaponAmmoSyncEntry[];}
+export interface WeaponAmmoSyncResult{weapons:CharacterWeaponView[];}
