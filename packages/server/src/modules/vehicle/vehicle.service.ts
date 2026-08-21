@@ -2,39 +2,24 @@ import type { VehicleActionView, VehicleView } from '@eclipse/shared';
 import { createLogger } from '../../core/logger';
 import { db } from '../../infra/db';
 import { assertNotActivelyListed } from '../marketplace/marketplace.guard';
+import { canUseVehicle } from './access.service';
 
-const log = createLogger('vehicle');
-
-interface VehicleRow {
-  id: string;
-  model: string;
-  vin: string;
-  plate: string | null;
-  fuel: string;
-  mileage: string;
-  engine_health: string;
-  body_health: string;
-  locked: boolean;
-  impounded: boolean;
-  insurance_until: Date | null;
-}
-
-interface SpawnedVehicle {
-  entity: VehicleMp;
-  ownerCharacterId: number;
-  ownerPlayerId: number;
-}
-
-const spawned = new Map<string, SpawnedVehicle>();
-const isAlive = (entry: SpawnedVehicle | undefined): entry is SpawnedVehicle => entry !== undefined && mp.vehicles.exists(entry.entity);
-const cleanupStale = (vehicleId: string): void => { const entry = spawned.get(vehicleId); if (entry && !mp.vehicles.exists(entry.entity)) spawned.delete(vehicleId); };
-const toView = (row: VehicleRow): VehicleView => { cleanupStale(row.id); return { id:row.id,model:row.model,vin:row.vin,plate:row.plate,fuel:row.fuel,mileage:row.mileage,engineHealth:row.engine_health,bodyHealth:row.body_health,locked:row.locked,impounded:row.impounded,insuranceUntil:row.insurance_until?row.insurance_until.toISOString():null,spawned:spawned.has(row.id) }; };
-const ownedRow = async (characterId:number,vehicleId:string):Promise<VehicleRow> => { const row=await db().selectFrom('vehicles').select(['id','model','vin','plate','fuel','mileage','engine_health','body_health','locked','impounded','insurance_until']).where('id','=',vehicleId).where('owner_character_id','=',characterId).executeTakeFirst(); if(!row)throw new Error('VEHICLE_NOT_FOUND');return row as unknown as VehicleRow; };
-export const listOwnedVehicles=async(characterId:number):Promise<VehicleView[]>=>{const rows=await db().selectFrom('vehicles').select(['id','model','vin','plate','fuel','mileage','engine_health','body_health','locked','impounded','insurance_until']).where('owner_character_id','=',characterId).orderBy('id').execute() as unknown as VehicleRow[];return rows.map(toView);};
-const deliveryPosition=(player:PlayerMp):Vector3=>{const heading=Number.isFinite(player.heading)?player.heading:0;const radians=heading*Math.PI/180;return new mp.Vector3(player.position.x+Math.sin(radians)*4,player.position.y+Math.cos(radians)*4,player.position.z);};
-export const spawnOwnedVehicle=async(characterId:number,player:PlayerMp,vehicleId:string):Promise<VehicleActionView>=>{const row=await ownedRow(characterId,vehicleId);if(row.impounded)throw new Error('VEHICLE_IMPOUNDED');await assertNotActivelyListed('vehicle',vehicleId);cleanupStale(vehicleId);const existing=spawned.get(vehicleId);if(isAlive(existing))throw new Error('VEHICLE_ALREADY_SPAWNED');const position=deliveryPosition(player);const entity=mp.vehicles.new(mp.joaat(row.model),position,{heading:player.heading,numberPlate:(row.plate??'ECLIPSE').slice(0,8),locked:row.locked,engine:false,dimension:player.dimension});const bodyHealth=Number(row.body_health);if(Number.isFinite(bodyHealth))entity.bodyHealth=bodyHealth;spawned.set(vehicleId,{entity,ownerCharacterId:characterId,ownerPlayerId:player.id});log.info(`машина ${vehicleId} (${row.model}) доставлена character=${characterId}`);return{vehicle:{...toView(row),spawned:true},spawned:true};};
-const persistEntity=async(vehicleId:string,entry:SpawnedVehicle):Promise<void>=>{if(!mp.vehicles.exists(entry.entity))return;const{position}=entry.entity;await db().updateTable('vehicles').set({position_x:String(position.x.toFixed(3)),position_y:String(position.y.toFixed(3)),position_z:String(position.z.toFixed(3)),heading:String(entry.entity.heading.toFixed(2)),dimension:entry.entity.dimension,engine_health:String(Math.max(0,entry.entity.engineHealth).toFixed(2)),body_health:String(Math.max(0,entry.entity.bodyHealth).toFixed(2)),locked:entry.entity.locked,updated_at:new Date()}).where('id','=',vehicleId).where('owner_character_id','=',entry.ownerCharacterId).execute();};
-export const storeOwnedVehicle=async(characterId:number,vehicleId:string):Promise<VehicleActionView>=>{await ownedRow(characterId,vehicleId);cleanupStale(vehicleId);const entry=spawned.get(vehicleId);if(!entry||entry.ownerCharacterId!==characterId||!mp.vehicles.exists(entry.entity))throw new Error('VEHICLE_NOT_SPAWNED');await persistEntity(vehicleId,entry);entry.entity.destroy();spawned.delete(vehicleId);const refreshed=await ownedRow(characterId,vehicleId);log.info(`машина ${vehicleId} возвращена в гараж character=${characterId}`);return{vehicle:{...toView(refreshed),spawned:false},spawned:false};};
-export const toggleOwnedVehicleLock=async(characterId:number,vehicleId:string):Promise<VehicleView>=>{const row=await ownedRow(characterId,vehicleId);const locked=!row.locked;await db().updateTable('vehicles').set({locked,updated_at:new Date()}).where('id','=',vehicleId).where('owner_character_id','=',characterId).execute();cleanupStale(vehicleId);const entry=spawned.get(vehicleId);if(entry&&entry.ownerCharacterId===characterId&&mp.vehicles.exists(entry.entity))entry.entity.locked=locked;return{...toView({...row,locked}),locked};};
-export const storeVehiclesForPlayer=async(playerId:number):Promise<void>=>{const entries=[...spawned.entries()].filter(([,entry])=>entry.ownerPlayerId===playerId);for(const[vehicleId,entry]of entries){try{await persistEntity(vehicleId,entry);}catch(error){log.error(`не удалось сохранить машину ${vehicleId} при выходе`,error);}finally{if(mp.vehicles.exists(entry.entity))entry.entity.destroy();spawned.delete(vehicleId);}}};
-export const getSpawnedOwnedVehicleEntity=(characterId:number,vehicleId:string):VehicleMp|null=>{cleanupStale(vehicleId);const entry=spawned.get(vehicleId);if(!entry||entry.ownerCharacterId!==characterId||!mp.vehicles.exists(entry.entity))return null;return entry.entity;};
+const log=createLogger('vehicle');
+interface VehicleRow{id:string;owner_character_id:number|null;model:string;vin:string;plate:string|null;fuel:string;mileage:string;engine_health:string;body_health:string;locked:boolean;impounded:boolean;insurance_until:Date|null;}
+interface SpawnedVehicle{entity:VehicleMp;ownerCharacterId:number;actorCharacterId:number;ownerPlayerId:number;}
+const spawned=new Map<string,SpawnedVehicle>();
+const isAlive=(e:SpawnedVehicle|undefined):e is SpawnedVehicle=>e!==undefined&&mp.vehicles.exists(e.entity);
+const cleanupStale=(id:string)=>{const e=spawned.get(id);if(e&&!mp.vehicles.exists(e.entity))spawned.delete(id);};
+const toView=(r:VehicleRow):VehicleView=>{cleanupStale(r.id);return{id:r.id,model:r.model,vin:r.vin,plate:r.plate,fuel:r.fuel,mileage:r.mileage,engineHealth:r.engine_health,bodyHealth:r.body_health,locked:r.locked,impounded:r.impounded,insuranceUntil:r.insurance_until?r.insurance_until.toISOString():null,spawned:spawned.has(r.id)};};
+const select=['id','owner_character_id','model','vin','plate','fuel','mileage','engine_health','body_health','locked','impounded','insurance_until'] as const;
+const ownedRow=async(c:number,id:string):Promise<VehicleRow>=>{const r=await db().selectFrom('vehicles').select(select).where('id','=',id).where('owner_character_id','=',c).executeTakeFirst();if(!r)throw new Error('VEHICLE_NOT_FOUND');return r as unknown as VehicleRow;};
+const usableRow=async(c:number,id:string):Promise<VehicleRow>=>{if(!await canUseVehicle(c,id))throw new Error('VEHICLE_NOT_FOUND');const r=await db().selectFrom('vehicles').select(select).where('id','=',id).executeTakeFirst();if(!r||r.owner_character_id===null)throw new Error('VEHICLE_NOT_FOUND');return r as unknown as VehicleRow;};
+export const listOwnedVehicles=async(c:number):Promise<VehicleView[]>=>{const rows=await db().selectFrom('vehicles').select(select).where('owner_character_id','=',c).orderBy('id').execute() as unknown as VehicleRow[];return rows.map(toView);};
+export const listUsableVehicles=async(c:number):Promise<VehicleView[]>=>{const rows=await db().selectFrom('vehicles').select(select).where(q=>q.or([q('owner_character_id','=',c),q('id','in',q.selectFrom('vehicle_access').select('vehicle_id').where('character_id','=',c))])).orderBy('id').execute() as unknown as VehicleRow[];return rows.map(toView);};
+const deliveryPosition=(p:PlayerMp):Vector3=>{const h=Number.isFinite(p.heading)?p.heading:0,r=h*Math.PI/180;return new mp.Vector3(p.position.x+Math.sin(r)*4,p.position.y+Math.cos(r)*4,p.position.z);};
+export const spawnOwnedVehicle=async(c:number,p:PlayerMp,id:string):Promise<VehicleActionView>=>{const row=await usableRow(c,id);if(row.impounded)throw new Error('VEHICLE_IMPOUNDED');await assertNotActivelyListed('vehicle',id);cleanupStale(id);if(isAlive(spawned.get(id)))throw new Error('VEHICLE_ALREADY_SPAWNED');const entity=mp.vehicles.new(mp.joaat(row.model),deliveryPosition(p),{heading:p.heading,numberPlate:(row.plate??'ECLIPSE').slice(0,8),locked:row.locked,engine:false,dimension:p.dimension});const bh=Number(row.body_health);if(Number.isFinite(bh))entity.bodyHealth=bh;spawned.set(id,{entity,ownerCharacterId:row.owner_character_id!,actorCharacterId:c,ownerPlayerId:p.id});return{vehicle:{...toView(row),spawned:true},spawned:true};};
+const persistEntity=async(id:string,e:SpawnedVehicle):Promise<void>=>{if(!mp.vehicles.exists(e.entity))return;const p=e.entity.position;await db().updateTable('vehicles').set({position_x:String(p.x.toFixed(3)),position_y:String(p.y.toFixed(3)),position_z:String(p.z.toFixed(3)),heading:String(e.entity.heading.toFixed(2)),dimension:e.entity.dimension,engine_health:String(Math.max(0,e.entity.engineHealth).toFixed(2)),body_health:String(Math.max(0,e.entity.bodyHealth).toFixed(2)),locked:e.entity.locked,updated_at:new Date()}).where('id','=',id).where('owner_character_id','=',e.ownerCharacterId).execute();};
+export const storeOwnedVehicle=async(c:number,id:string):Promise<VehicleActionView>=>{const row=await usableRow(c,id);cleanupStale(id);const e=spawned.get(id);if(!e||e.actorCharacterId!==c||!mp.vehicles.exists(e.entity))throw new Error('VEHICLE_NOT_SPAWNED');await persistEntity(id,e);e.entity.destroy();spawned.delete(id);return{vehicle:{...toView(row),spawned:false},spawned:false};};
+export const toggleOwnedVehicleLock=async(c:number,id:string):Promise<VehicleView>=>{const row=await usableRow(c,id),locked=!row.locked;await db().updateTable('vehicles').set({locked,updated_at:new Date()}).where('id','=',id).execute();cleanupStale(id);const e=spawned.get(id);if(e&&mp.vehicles.exists(e.entity))e.entity.locked=locked;return{...toView({...row,locked}),locked};};
+export const storeVehiclesForPlayer=async(playerId:number):Promise<void>=>{for(const[id,e]of [...spawned.entries()].filter(([,x])=>x.ownerPlayerId===playerId)){try{await persistEntity(id,e);}catch(error){log.error(`не удалось сохранить машину ${id} при выходе`,error);}finally{if(mp.vehicles.exists(e.entity))e.entity.destroy();spawned.delete(id);}}};
+export const getSpawnedOwnedVehicleEntity=(c:number,id:string):VehicleMp|null=>{cleanupStale(id);const e=spawned.get(id);if(!e||e.ownerCharacterId!==c||!mp.vehicles.exists(e.entity))return null;return e.entity;};
