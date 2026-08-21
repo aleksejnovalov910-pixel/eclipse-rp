@@ -48,6 +48,7 @@ jobs:
       - run: npm run migrate
       - run: npm run test:schema
       - run: npm run test:anti-abuse
+      - run: npm run test:restart
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test:smoke
