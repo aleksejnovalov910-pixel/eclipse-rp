@@ -1,0 +1,10 @@
+import { build } from 'esbuild';
+import { cpSync,existsSync,mkdirSync,rmSync,writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+const root=resolve('.');const out=resolve('release/host-test');rmSync(out,{recursive:true,force:true});mkdirSync(out,{recursive:true});
+for(const path of ['dist/packages','dist/client_packages']){if(!existsSync(path))throw new Error(`[host-package] missing ${path}; run npm run build first`);}cpSync('dist/packages',`${out}/packages`,{recursive:true});cpSync('dist/client_packages',`${out}/client_packages`,{recursive:true});mkdirSync(`${out}/database`,{recursive:true});cpSync('database/migrations',`${out}/database/migrations`,{recursive:true});cpSync('.env.production.example',`${out}/.env.example`);cpSync('deploy/ragemp/conf.json.example',`${out}/conf.json.example`);
+await build({entryPoints:['scripts/host-migrate-entry.mjs'],outfile:`${out}/ops/migrate.cjs`,bundle:true,platform:'node',target:'node16',format:'cjs',external:['pg-native'],logLevel:'warning'});
+mkdirSync(`${out}/ops`,{recursive:true});
+writeFileSync(`${out}/ops/start.sh`,`#!/usr/bin/env bash\nset -euo pipefail\nROOT=\"$(cd \"$(dirname \"$0\")/..\" && pwd)\"\ncd \"$ROOT\"\nENV_FILE=\"${ECLIPSE_ENV_FILE:-$ROOT/.env}\"\n[ -f \"$ENV_FILE\" ] || { echo \"Missing $ENV_FILE. Copy .env.example to .env and edit it.\"; exit 1; }\nset -a\n. \"$ENV_FILE\"\nset +a\nnode \"$ROOT/ops/migrate.cjs\"\nBIN=\"${RAGEMP_BIN:-./ragemp-server}\"\n[ -x \"$BIN\" ] || { echo \"RAGE MP binary not found/executable: $BIN\"; exit 1; }\nexec \"$BIN\"\n`);
+writeFileSync(`${out}/HOST_TEST_READY.txt`,`ECLIPSE RP HOST TEST PACKAGE\n\n1. Copy contents to a clean Linux RAGE MP server root.\n2. Keep/provide the RAGE MP Linux binary and runtime files from your host.\n3. Copy .env.example to .env and set PostgreSQL credentials.\n4. Copy conf.json.example to conf.json and adjust port/name if needed.\n5. chmod +x ops/start.sh ragemp-server\n6. Start with: ./ops/start.sh\n\nThe launcher applies database migrations before starting RAGE MP.\n`);
+console.log(`[host-package] ready: ${out}`);
