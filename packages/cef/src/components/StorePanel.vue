@@ -1,0 +1,12 @@
+<script setup lang="ts">
+import { onMounted,ref } from 'vue';
+import { RpcEvent,type StoreProductView,type StorePurchaseResult } from '@eclipse/shared';
+import { rpc } from '../core/rpc';
+const products=ref<StoreProductView[]>([]),qty=ref<Record<string,string>>({}),busy=ref(false),error=ref(''),notice=ref('');
+const money=(v:string)=>Number(v).toLocaleString('ru-RU',{maximumFractionDigits:2});
+const load=async()=>{const r=await rpc<StoreProductView[]>(RpcEvent.StoreProducts);if(r.ok)products.value=r.data;else error.value=r.code;};
+const buy=async(p:StoreProductView)=>{busy.value=true;error.value='';notice.value='';try{const quantity=Math.max(1,Math.min(20,Number(qty.value[p.itemKey]||1)));const r=await rpc<StorePurchaseResult>(RpcEvent.StoreBuy,{businessId:p.businessId,itemKey:p.itemKey,quantity});if(!r.ok){error.value=r.code;return;}notice.value=`Куплено: ${p.name} ×${r.data.quantity} за $${money(r.data.total)}`;await load();}finally{busy.value=false;}};
+onMounted(()=>void load());
+</script>
+<template><section class="store"><div class="head"><div><small>24/7</small><h3>Магазины и расходники</h3></div><button @click="load">Обновить</button></div><p v-if="error" class="msg err">{{error}}</p><p v-if="notice" class="msg ok">{{notice}}</p><div class="products"><article v-for="p in products" :key="`${p.businessId}:${p.itemKey}`"><div><b>{{p.name}}</b><small>{{p.businessName}} · {{p.category}}</small><span>${{money(p.price)}} / шт. · склад {{p.stock}}</span></div><input v-model="qty[p.itemKey]" inputmode="numeric" placeholder="1"><button :disabled="busy||p.stock<1" @click="buy(p)">Купить</button></article></div><p class="hint">Покупка проходит только рядом с магазином; сервер проверяет деньги, склад, вес и свободные слоты.</p></section></template>
+<style scoped>.store{margin-top:20px;padding-top:18px;border-top:1px solid var(--e-border)}.head{display:flex;justify-content:space-between;align-items:center}.head h3{margin:3px 0}.head small{color:var(--e-accent)}button,input{padding:9px;border:1px solid var(--e-border);border-radius:9px;background:var(--e-surface-2);color:var(--e-text-primary)}button{cursor:pointer}.products{display:grid;gap:7px;margin-top:12px}.products article{display:grid;grid-template-columns:1fr 70px auto;gap:8px;align-items:center;padding:11px;border:1px solid var(--e-border);border-radius:10px}.products article>div{display:flex;flex-direction:column}.products small,.products span,.hint{color:var(--e-text-muted);font-size:11px}.msg{padding:8px;border-radius:8px}.err{color:#ff8585}.ok{color:#7dde9f}</style>
