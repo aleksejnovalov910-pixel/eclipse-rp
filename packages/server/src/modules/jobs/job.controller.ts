@@ -1,102 +1,12 @@
-import {
-  ErrorCode,
-  RpcEvent,
-  ServerEvent,
-  SessionState,
-  err,
-  ok,
-  type JobAssignmentView,
-  type JobProgressView,
-  type JobStepResult,
-} from '@eclipse/shared';
-import { consume } from '../../core/rateLimit';
-import { onRpc } from '../../core/rpc';
-import {
-  cancelAssignment,
-  completeAssignmentStep,
-  getActiveAssignment,
-  listProgress,
-  startAssignment,
-} from './job.service';
-
-const requireCharacter = (state: SessionState, characterId: number | null): number | null =>
-  state === SessionState.Playing && characterId !== null ? characterId : null;
-
-const mapJobError = (error: unknown) => {
-  const code = error instanceof Error ? error.message : '';
-  switch (code) {
-    case 'UNKNOWN_JOB': return err(ErrorCode.Validation, { reason: 'unknown_job' });
-    case 'JOB_ALREADY_ACTIVE': return err(ErrorCode.Validation, { reason: 'job_already_active' });
-    case 'JOB_NOT_ACTIVE': return err(ErrorCode.Validation, { reason: 'job_not_active' });
-    case 'JOB_TOO_FAR': return err(ErrorCode.Validation, { reason: 'job_too_far' });
-    case 'JOB_TOO_FAST': return err(ErrorCode.Validation, { reason: 'job_too_fast' });
-    default: throw error;
-  }
-};
-
-const syncTarget = (player: PlayerMp, assignment: JobAssignmentView | null): void => {
-  player.call(ServerEvent.JobTarget, [JSON.stringify(assignment?.target ?? null)]);
-};
-
-export const registerJobModule = (): void => {
-  const readRule = { max: 30, windowMs: 60_000 };
-  const actionRule = { max: 20, windowMs: 60_000 };
-
-  onRpc<unknown, JobProgressView[]>(RpcEvent.JobProgress, async (ctx) => {
-    const limited = consume(ctx.session, 'jobs:progress', readRule);
-    if (limited) return limited;
-    const characterId = requireCharacter(ctx.session.state, ctx.session.characterId);
-    if (characterId === null) return err(ErrorCode.Unauthorized);
-    return ok(await listProgress(characterId));
-  });
-
-  onRpc<unknown, JobAssignmentView | null>(RpcEvent.JobActive, async (ctx) => {
-    const limited = consume(ctx.session, 'jobs:active', readRule);
-    if (limited) return limited;
-    const characterId = requireCharacter(ctx.session.state, ctx.session.characterId);
-    if (characterId === null) return err(ErrorCode.Unauthorized);
-    const assignment = getActiveAssignment(characterId);
-    syncTarget(ctx.player, assignment);
-    return ok(assignment);
-  });
-
-  onRpc<{ jobKey?: string }, JobAssignmentView>(RpcEvent.JobStart, async (ctx, payload) => {
-    const limited = consume(ctx.session, 'jobs:start', actionRule);
-    if (limited) return limited;
-    const characterId = requireCharacter(ctx.session.state, ctx.session.characterId);
-    if (characterId === null) return err(ErrorCode.Unauthorized);
-    if (typeof payload?.jobKey !== 'string') return err(ErrorCode.Validation, { field: 'jobKey' });
-    try {
-      const assignment = startAssignment(characterId, payload.jobKey);
-      syncTarget(ctx.player, assignment);
-      return ok(assignment);
-    } catch (error) {
-      return mapJobError(error);
-    }
-  });
-
-  onRpc<unknown, JobStepResult>(RpcEvent.JobCompleteStep, async (ctx) => {
-    const limited = consume(ctx.session, 'jobs:completeStep', actionRule);
-    if (limited) return limited;
-    const characterId = requireCharacter(ctx.session.state, ctx.session.characterId);
-    if (characterId === null) return err(ErrorCode.Unauthorized);
-    try {
-      const position = ctx.player.position;
-      const result = await completeAssignmentStep(characterId, { x: position.x, y: position.y, z: position.z });
-      syncTarget(ctx.player, result.assignment);
-      return ok(result);
-    } catch (error) {
-      return mapJobError(error);
-    }
-  });
-
-  onRpc<unknown, { cancelled: boolean }>(RpcEvent.JobCancel, async (ctx) => {
-    const limited = consume(ctx.session, 'jobs:cancel', actionRule);
-    if (limited) return limited;
-    const characterId = requireCharacter(ctx.session.state, ctx.session.characterId);
-    if (characterId === null) return err(ErrorCode.Unauthorized);
-    const cancelled = cancelAssignment(characterId);
-    syncTarget(ctx.player, null);
-    return ok({ cancelled });
-  });
+import { ErrorCode,RpcEvent,ServerEvent,SessionState,err,ok,type JobAssignmentView,type JobProgressView,type JobStepResult } from '@eclipse/shared';
+import { consume } from '../../core/rateLimit';import { onRpc } from '../../core/rpc';import { cancelAssignment,completeAssignmentStep,getActiveAssignment,listProgress,startAssignment } from './job.service';
+const requireCharacter=(state:SessionState,id:number|null):number|null=>state===SessionState.Playing&&id!==null?id:null;
+const mapJobError=(e:unknown)=>{const c=e instanceof Error?e.message:'';switch(c){case'UNKNOWN_JOB':return err(ErrorCode.Validation,{reason:'unknown_job'});case'JOB_ALREADY_ACTIVE':return err(ErrorCode.Validation,{reason:'job_already_active'});case'JOB_NOT_ACTIVE':return err(ErrorCode.Validation,{reason:'job_not_active'});case'JOB_TOO_FAR':return err(ErrorCode.Validation,{reason:'job_too_far'});case'JOB_TOO_FAST':return err(ErrorCode.Validation,{reason:'job_action_not_finished'});case'JOB_VEHICLE_REQUIRED':return err(ErrorCode.Validation,{reason:'job_vehicle_required'});case'JOB_LEVEL_REQUIRED':return err(ErrorCode.Validation,{reason:'job_level_required'});case'CHARACTER_NOT_FOUND':return err(ErrorCode.CharacterNotFound);default:throw e;}};
+const syncTarget=(p:PlayerMp,a:JobAssignmentView|null)=>p.call(ServerEvent.JobTarget,[JSON.stringify(a?.target??null)]);
+export const registerJobModule=():void=>{const read={max:40,windowMs:60000},action={max:24,windowMs:60000};
+ onRpc<unknown,JobProgressView[]>(RpcEvent.JobProgress,async ctx=>{const l=consume(ctx.session,'jobs:progress',read);if(l)return l;const c=requireCharacter(ctx.session.state,ctx.session.characterId);if(c===null)return err(ErrorCode.Unauthorized);return ok(await listProgress(c));});
+ onRpc<unknown,JobAssignmentView|null>(RpcEvent.JobActive,async ctx=>{const c=requireCharacter(ctx.session.state,ctx.session.characterId);if(c===null)return err(ErrorCode.Unauthorized);const a=getActiveAssignment(c);syncTarget(ctx.player,a);return ok(a);});
+ onRpc<{jobKey?:string},JobAssignmentView>(RpcEvent.JobStart,async(ctx,p)=>{const l=consume(ctx.session,'jobs:start',action);if(l)return l;const c=requireCharacter(ctx.session.state,ctx.session.characterId);if(c===null)return err(ErrorCode.Unauthorized);if(typeof p?.jobKey!=='string')return err(ErrorCode.Validation,{field:'jobKey'});try{const a=await startAssignment(c,p.jobKey);syncTarget(ctx.player,a);return ok(a);}catch(e){return mapJobError(e);}});
+ onRpc<unknown,JobStepResult>(RpcEvent.JobCompleteStep,async ctx=>{const l=consume(ctx.session,'jobs:completeStep',action);if(l)return l;const c=requireCharacter(ctx.session.state,ctx.session.characterId);if(c===null)return err(ErrorCode.Unauthorized);try{const p=ctx.player.position,r=await completeAssignmentStep(c,{x:p.x,y:p.y,z:p.z},ctx.player.vehicle!==undefined&&ctx.player.vehicle!==null);syncTarget(ctx.player,r.assignment);return ok(r);}catch(e){return mapJobError(e);}});
+ onRpc<unknown,{cancelled:boolean}>(RpcEvent.JobCancel,async ctx=>{const c=requireCharacter(ctx.session.state,ctx.session.characterId);if(c===null)return err(ErrorCode.Unauthorized);const cancelled=cancelAssignment(c);syncTarget(ctx.player,null);return ok({cancelled});});
 };
