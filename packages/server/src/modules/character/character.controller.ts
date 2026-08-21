@@ -15,6 +15,7 @@ import { beginTracking } from './character.state';
 import { advanceQuestSafe } from '../quests/quest.service';
 import { currentOutfit,currentTattoos } from '../customization/customization.service';
 import { custodyState } from '../publicServices/policeActions.service';
+import { hospitalize, state as medicalState } from '../publicServices/medicalEmergency.service';
 
 const log = createLogger('character:rpc');
 
@@ -55,7 +56,7 @@ export const registerCharacterModule = (): void => {
     spawn(ctx.player, result.data);
     beginTracking(ctx.session);
     ctx.player.call(ServerEvent.CharacterAppearance, [JSON.stringify(result.data.appearance)]);
-    const [outfit,tattoos,custody]=await Promise.all([currentOutfit(result.data.characterId),currentTattoos(result.data.characterId),custodyState(result.data.characterId)]);
+    const [outfit,tattoos,custody,medicalRaw]=await Promise.all([currentOutfit(result.data.characterId),currentTattoos(result.data.characterId),custodyState(result.data.characterId),medicalState(result.data.characterId)]);
     ctx.player.call(ServerEvent.OutfitState, [JSON.stringify(outfit.components)]);
     ctx.player.call(ServerEvent.TattooState, [JSON.stringify(tattoos)]);
     if(custody.jailedUntil&&new Date(custody.jailedUntil).getTime()>Date.now()){
@@ -63,6 +64,13 @@ export const registerCharacterModule = (): void => {
       ctx.player.dimension=0;
     }
     ctx.player.call(ServerEvent.PoliceCustodyState,[JSON.stringify(custody)]);
+    let medical=medicalRaw;
+    const bleedoutExpired=medical.downed&&medical.bleedoutAt!==null&&new Date(medical.bleedoutAt).getTime()<=Date.now();
+    if(bleedoutExpired)medical=await hospitalize(result.data.characterId);
+    if(medical.downed){ctx.player.health=20;}else if(medical.hospitalizedUntil&&new Date(medical.hospitalizedUntil).getTime()>Date.now()){
+      ctx.player.position=new mp.Vector3(307.3,-595.3,43.3);ctx.player.dimension=0;ctx.player.health=100;ctx.player.armour=0;
+    }
+    ctx.player.call(ServerEvent.MedicalState,[JSON.stringify(medical)]);
     ctx.player.call(ServerEvent.SessionState, [SessionState.Playing]);
     await advanceQuestSafe(result.data.characterId, 'welcome');
     return { ok: true, data: { characterId: result.data.characterId } };
