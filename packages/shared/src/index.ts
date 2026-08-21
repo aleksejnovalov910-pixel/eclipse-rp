@@ -11,6 +11,7 @@ export * from './types/property';
 export * from './types/business';
 export * from './types/marketplace';
 export * from './types/fuel';
+export * from './types/dealership';
 export * from './types/economy';
 export * from './types/phone';
 export * from './types/quest';
