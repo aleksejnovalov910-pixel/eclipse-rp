@@ -7,31 +7,12 @@ export interface FamilyView {
   rankName: string;
   memberCount: number;
 }
-
-export interface FamilyCreateRequest {
-  name: string;
-}
-
-export interface FamilyMemberView {
-  characterId: number;
-  name: string;
-  rankName: string;
-  rankIndex: number;
-  contribution: number;
-  joinedAt: string;
-}
-
-export interface FamilyInvitationView {
-  familyId: string;
-  familyName: string;
-  inviterCharacterId: number;
-  expiresAt: string;
-}
-
-export interface FamilyInviteRequest {
-  targetCharacterId: number;
-}
-
-export interface FamilyTreasuryRequest {
-  amount: string;
-}
+export interface FamilyCreateRequest { name: string; }
+export interface FamilyMemberView { characterId:number;name:string;rankName:string;rankIndex:number;contribution:number;joinedAt:string; }
+export interface FamilyInvitationView { familyId:string;familyName:string;inviterCharacterId:number;expiresAt:string; }
+export interface FamilyInviteRequest { targetCharacterId:number; }
+export interface FamilyTreasuryRequest { amount:string; }
+export interface FamilyRankView { id:string;rankIndex:number;name:string;permissions:Record<string,unknown>; }
+export interface FamilySetRankRequest { targetCharacterId:number;rankIndex:number; }
+export interface FamilyKickRequest { targetCharacterId:number; }
+export interface FamilyAuditView { id:string;actorCharacterId:number|null;targetCharacterId:number|null;action:string;metadata:Record<string,unknown>;createdAt:string; }
