@@ -1,223 +1,40 @@
-import { sql, type Transaction } from 'kysely';
-import type { JobAssignmentView, JobProgressView, JobStepResult, JobTarget } from '@eclipse/shared';
-import { db } from '../../infra/db';
-import type { Database } from '../../infra/schema';
-import { advanceQuestSafe } from '../quests/quest.service';
-
-interface JobDefinition {
-  name: string;
-  rewardCash: string;
-  experienceReward: number;
-  targets: readonly JobTarget[];
-}
-
-const JOBS: Record<string, JobDefinition> = {
-  builder: {
-    name: 'Строитель', rewardCash: '650.00', experienceReward: 35,
-    targets: [{ x: -508.7, y: -1001.7, z: 23.6 }, { x: -493.4, y: -1015.4, z: 23.5 }, { x: -477.8, y: -995.0, z: 23.6 }],
-  },
-  collector: {
-    name: 'Собиратель', rewardCash: '520.00', experienceReward: 30,
-    targets: [{ x: 247.1, y: -835.9, z: 29.3 }, { x: 182.7, y: -914.1, z: 30.7 }, { x: 119.4, y: -1037.6, z: 29.3 }],
-  },
-  courier: {
-    name: 'Почтальон', rewardCash: '700.00', experienceReward: 40,
-    targets: [{ x: -54.8, y: -1754.5, z: 29.4 }, { x: 255.4, y: -375.7, z: 44.1 }, { x: -296.8, y: -829.8, z: 32.4 }],
-  },
-  detective: {
-    name: 'Сыщик', rewardCash: '850.00', experienceReward: 45,
-    targets: [{ x: 441.2, y: -981.9, z: 30.7 }, { x: 304.8, y: -600.2, z: 43.3 }, { x: -1095.0, y: -836.4, z: 19.0 }],
-  },
-  firefighter: {
-    name: 'Пожарный', rewardCash: '900.00', experienceReward: 45,
-    targets: [{ x: 1201.3, y: -1471.2, z: 34.9 }, { x: 215.0, y: -1642.7, z: 29.8 }, { x: -633.5, y: -121.6, z: 39.0 }],
-  },
-  cash_collector: {
-    name: 'Инкассатор', rewardCash: '1100.00', experienceReward: 55,
-    targets: [{ x: 149.8, y: -1040.6, z: 29.4 }, { x: -1212.9, y: -330.8, z: 37.8 }, { x: -2962.6, y: 482.9, z: 15.7 }],
-  },
-  trucker: {
-    name: 'Дальнобойщик', rewardCash: '1450.00', experienceReward: 65,
-    targets: [{ x: 1204.6, y: -3104.2, z: 5.9 }, { x: 2568.2, y: 468.7, z: 108.5 }, { x: 1704.8, y: 4917.5, z: 42.1 }],
-  },
-  treasure_hunter: {
-    name: 'Кладоискатель', rewardCash: '1250.00', experienceReward: 60,
-    targets: [{ x: -1604.1, y: 5256.8, z: 3.9 }, { x: 501.1, y: 5604.2, z: 797.9 }, { x: 3327.7, y: 5151.2, z: 18.3 }],
-  },
+import { sql,type Transaction } from 'kysely';
+import type { JobAssignmentView,JobProgressView,JobStepResult,JobTarget } from '@eclipse/shared';
+import { db } from '../../infra/db';import type { Database } from '../../infra/schema';import { advanceQuestSafe } from '../quests/quest.service';
+interface Step extends JobTarget{action:string;durationMs:number;vehicle?:boolean;}
+interface JobDefinition{name:string;description:string;rewardCash:string;experienceReward:number;requiredLevel:number;steps:readonly Step[];}
+const s=(x:number,y:number,z:number,action:string,durationMs=2500,vehicle=false):Step=>({x,y,z,action,durationMs,vehicle});
+const JOBS:Record<string,JobDefinition>={
+ builder:{name:'Строитель',description:'Монтаж, разгрузка и проверка строительных узлов.',rewardCash:'650',experienceReward:35,requiredLevel:1,steps:[s(-508.7,-1001.7,23.6,'Заберите инструменты'),s(-493.4,-1015.4,23.5,'Установите крепёж',3500),s(-477.8,-995,23.6,'Проверьте конструкцию',3000)]},
+ collector:{name:'Сборщик отходов',description:'Сбор городских отходов с нескольких площадок.',rewardCash:'600',experienceReward:32,requiredLevel:1,steps:[s(247.1,-835.9,29.3,'Соберите мешки'),s(182.7,-914.1,30.7,'Очистите контейнер'),s(119.4,-1037.6,29.3,'Сдайте отходы')]},
+ courier:{name:'Курьер',description:'Получение и адресная доставка посылок.',rewardCash:'760',experienceReward:40,requiredLevel:1,steps:[s(-54.8,-1754.5,29.4,'Получите посылку'),s(255.4,-375.7,44.1,'Доставьте посылку'),s(-296.8,-829.8,32.4,'Подтвердите доставку')]},
+ taxi:{name:'Таксист',description:'Маршрутные поездки с обязательным использованием автомобиля.',rewardCash:'900',experienceReward:45,requiredLevel:2,steps:[s(215.8,-810.1,30.7,'Подберите пассажира',1800,true),s(-1037.5,-2737.8,20.1,'Доставьте в аэропорт',1800,true),s(-303.1,-989.2,31.1,'Вернитесь на стоянку',1800,true)]},
+ bus_driver:{name:'Водитель автобуса',description:'Городской маршрут с последовательными остановками.',rewardCash:'1150',experienceReward:52,requiredLevel:3,steps:[s(454.1,-662.6,28.5,'Начните маршрут',1800,true),s(307.7,-766.1,29.3,'Остановка Legion',1800,true),s(-273.2,-829.9,31.7,'Остановка Alta',1800,true),s(-714.8,-824.8,23.5,'Остановка Vespucci',1800,true),s(454.1,-662.6,28.5,'Завершите маршрут',1800,true)]},
+ garbage_driver:{name:'Водитель мусоровоза',description:'Обслуживание контейнерных площадок и вывоз на переработку.',rewardCash:'1250',experienceReward:56,requiredLevel:3,steps:[s(-321.2,-1545.8,31,'Получите машину',1800,true),s(114.1,-1462.3,29.3,'Загрузите контейнер',2500,true),s(-535.4,-1717.2,19.3,'Загрузите контейнер',2500,true),s(-354.4,-1561.2,25.2,'Разгрузите кузов',3000,true)]},
+ mechanic:{name:'Выездной механик',description:'Диагностика и ремонт транспорта на сервисных точках.',rewardCash:'1050',experienceReward:50,requiredLevel:3,steps:[s(-338.8,-136.8,39,'Получите набор механика'),s(-1155.2,-2007.1,13.2,'Проведите диагностику',3500),s(731.8,-1088.8,22.2,'Выполните ремонт',4500)]},
+ lumberjack:{name:'Лесоруб',description:'Заготовка, обработка и сдача древесины.',rewardCash:'1100',experienceReward:52,requiredLevel:4,steps:[s(-552.4,5348.4,74.7,'Возьмите экипировку'),s(-578.9,5427.4,58.5,'Срубите дерево',4500),s(-501.7,5392.7,75.3,'Обработайте древесину',3500),s(-566.2,5253.2,70.5,'Сдайте пиломатериалы')]},
+ miner:{name:'Шахтёр',description:'Добыча руды, сортировка и доставка партии.',rewardCash:'1350',experienceReward:60,requiredLevel:5,steps:[s(2952.4,2787.1,41.5,'Получите оборудование'),s(2946.1,2818.2,43.5,'Добудьте руду',5000),s(2677.2,2793.5,40.5,'Отсортируйте руду',3500),s(2748.5,2792.8,35.7,'Сдайте партию')]},
+ farmer:{name:'Фермер',description:'Сбор урожая, упаковка и доставка продукции.',rewardCash:'1200',experienceReward:55,requiredLevel:4,steps:[s(2447.7,4977.7,46.8,'Получите тару'),s(2304.4,4994.4,42.3,'Соберите урожай',4000),s(1961.2,5179.1,47.9,'Упакуйте продукцию',3000),s(1708.2,4728.4,42.1,'Сдайте продукцию')]},
+ fisherman:{name:'Рыбак',description:'Подготовка снастей, ловля и сдача улова.',rewardCash:'1250',experienceReward:58,requiredLevel:4,steps:[s(-1603.8,5258,2.1,'Получите снасти'),s(-1848.4,5269.2,1.6,'Забросьте удочку',5000),s(-1856.2,5278.7,1.3,'Вытяните улов',4000),s(-1595.8,5202.9,4.3,'Сдайте улов')]},
+ detective:{name:'Частный сыщик',description:'Осмотр мест, сбор улик и передача отчёта.',rewardCash:'1050',experienceReward:48,requiredLevel:5,steps:[s(441.2,-981.9,30.7,'Получите ориентировку'),s(304.8,-600.2,43.3,'Осмотрите место',4000),s(-1095,-836.4,19,'Соберите улику',3500),s(-545.5,-204.1,38.2,'Передайте отчёт')]},
+ firefighter:{name:'Пожарный',description:'Выезд по тревоге и обслуживание нескольких очагов.',rewardCash:'1350',experienceReward:62,requiredLevel:5,steps:[s(1201.3,-1471.2,34.9,'Получите экипировку'),s(215,-1642.7,29.8,'Локализуйте очаг',5000),s(-633.5,-121.6,39,'Потушите возгорание',5000),s(1201.3,-1471.2,34.9,'Верните оборудование')]},
+ cash_collector:{name:'Инкассатор',description:'Защищённый маршрут по банкам и сдача кассет.',rewardCash:'1600',experienceReward:68,requiredLevel:6,steps:[s(149.8,-1040.6,29.4,'Получите кассеты',2000,true),s(-1212.9,-330.8,37.8,'Заберите выручку',2500,true),s(-2962.6,482.9,15.7,'Заберите выручку',2500,true),s(251.6,220.5,106.3,'Сдайте кассеты',2500,true)]},
+ tow_truck:{name:'Эвакуаторщик',description:'Выезд, погрузка и доставка транспорта на площадку.',rewardCash:'1500',experienceReward:64,requiredLevel:6,steps:[s(-191.2,-1162.2,23.7,'Получите эвакуатор',1800,true),s(408.7,-1638.8,29.3,'Погрузите транспорт',3500,true),s(491.1,-1314.9,29.2,'Доставьте транспорт',2500,true)]},
+ trucker:{name:'Дальнобойщик',description:'Междугородняя перевозка груза с загрузкой и разгрузкой.',rewardCash:'2100',experienceReward:80,requiredLevel:7,steps:[s(1204.6,-3104.2,5.9,'Загрузите трейлер',3500,true),s(2568.2,468.7,108.5,'Контрольная точка',1500,true),s(1704.8,4917.5,42.1,'Разгрузите груз',4000,true)]},
+ treasure_hunter:{name:'Кладоискатель',description:'Поиск редких тайников по сложному маршруту.',rewardCash:'1800',experienceReward:72,requiredLevel:8,steps:[s(-1604.1,5256.8,3.9,'Изучите карту'),s(501.1,5604.2,797.9,'Осмотрите вершину',4500),s(3327.7,5151.2,18.3,'Раскопайте тайник',5000)]}
 };
-
-interface ActiveAssignment {
-  jobKey: string;
-  stepIndex: number;
-  issuedAt: number;
-}
-
-const active = new Map<number, ActiveAssignment>();
-const TARGET_RADIUS = 8;
-const MIN_STEP_TIME_MS = 1_500;
-
-const nextLevelExperience = (level: number): number => 100 + Math.max(0, level - 1) * 75;
-
-const definition = (jobKey: string): JobDefinition => {
-  const job = JOBS[jobKey];
-  if (!job) throw new Error('UNKNOWN_JOB');
-  return job;
-};
-
-const toAssignmentView = (assignment: ActiveAssignment): JobAssignmentView => {
-  const job = definition(assignment.jobKey);
-  const target = job.targets[assignment.stepIndex];
-  if (!target) throw new Error('INVALID_JOB_STEP');
-  return {
-    jobKey: assignment.jobKey,
-    name: job.name,
-    step: assignment.stepIndex + 1,
-    totalSteps: job.targets.length,
-    target,
-    rewardCash: job.rewardCash,
-    experienceReward: job.experienceReward,
-  };
-};
-
-export const listProgress = async (characterId: number): Promise<JobProgressView[]> => {
-  const rows = await db()
-    .selectFrom('job_progress')
-    .select(['job_key', 'level', 'experience', 'completed'])
-    .where('character_id', '=', characterId)
-    .execute();
-
-  const byKey = new Map(rows.map((row) => [row.job_key, row]));
-  return Object.entries(JOBS).map(([jobKey, job]) => {
-    const row = byKey.get(jobKey);
-    const level = row?.level ?? 1;
-    return {
-      jobKey,
-      name: job.name,
-      level,
-      experience: row?.experience ?? 0,
-      completed: row?.completed ?? 0,
-      nextLevelExperience: nextLevelExperience(level),
-    };
-  });
-};
-
-export const getActiveAssignment = (characterId: number): JobAssignmentView | null => {
-  const assignment = active.get(characterId);
-  return assignment ? toAssignmentView(assignment) : null;
-};
-
-export const startAssignment = (characterId: number, jobKey: string): JobAssignmentView => {
-  definition(jobKey);
-  if (active.has(characterId)) throw new Error('JOB_ALREADY_ACTIVE');
-  const assignment: ActiveAssignment = { jobKey, stepIndex: 0, issuedAt: Date.now() };
-  active.set(characterId, assignment);
-  return toAssignmentView(assignment);
-};
-
-export const cancelAssignment = (characterId: number): boolean => active.delete(characterId);
-
-const distance = (a: JobTarget, b: JobTarget): number =>
-  Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
-
-export const completeAssignmentStep = async (characterId: number, position: JobTarget): Promise<JobStepResult> => {
-  const assignment = active.get(characterId);
-  if (!assignment) throw new Error('JOB_NOT_ACTIVE');
-
-  const job = definition(assignment.jobKey);
-  const target = job.targets[assignment.stepIndex];
-  if (!target) throw new Error('INVALID_JOB_STEP');
-  if (distance(position, target) > TARGET_RADIUS) throw new Error('JOB_TOO_FAR');
-  if (Date.now() - assignment.issuedAt < MIN_STEP_TIME_MS) throw new Error('JOB_TOO_FAST');
-
-  if (assignment.stepIndex + 1 < job.targets.length) {
-    assignment.stepIndex += 1;
-    assignment.issuedAt = Date.now();
-    return { completed: false, assignment: toAssignmentView(assignment), payoutCash: '0.00', progress: null };
-  }
-
-  const progress = await db().transaction().execute(async (trx) => {
-    const updatedProgress = await persistCompletion(trx, characterId, assignment.jobKey, job.experienceReward);
-    await trx
-      .updateTable('characters')
-      .set({ cash: sql<string>`cash + ${job.rewardCash}::numeric`, updated_at: new Date() })
-      .where('id', '=', characterId)
-      .where('deleted_at', 'is', null)
-      .executeTakeFirstOrThrow();
-    await trx
-      .insertInto('economy_ledger')
-      .values({
-        character_id: characterId,
-        family_id: null,
-        source: `job:${assignment.jobKey}`,
-        direction: 'source',
-        amount: job.rewardCash,
-        metadata: { jobKey: assignment.jobKey },
-      })
-      .execute();
-    return updatedProgress;
-  });
-
-  active.delete(characterId);
-  await advanceQuestSafe(characterId, 'first_job');
-  return { completed: true, assignment: null, payoutCash: job.rewardCash, progress };
-};
-
-const persistCompletion = async (
-  trx: Transaction<Database>,
-  characterId: number,
-  jobKey: string,
-  experienceGain: number,
-): Promise<JobProgressView> => {
-  const job = definition(jobKey);
-  if (!Number.isInteger(experienceGain) || experienceGain <= 0 || experienceGain > 10_000) {
-    throw new Error('INVALID_JOB_EXPERIENCE');
-  }
-
-  const current = await trx
-    .selectFrom('job_progress')
-    .select(['level', 'experience', 'completed'])
-    .where('character_id', '=', characterId)
-    .where('job_key', '=', jobKey)
-    .forUpdate()
-    .executeTakeFirst();
-
-  let level = current?.level ?? 1;
-  let experience = (current?.experience ?? 0) + experienceGain;
-  let threshold = nextLevelExperience(level);
-  while (experience >= threshold) {
-    experience -= threshold;
-    level += 1;
-    threshold = nextLevelExperience(level);
-  }
-  const completed = (current?.completed ?? 0) + 1;
-
-  await trx
-    .insertInto('job_progress')
-    .values({ character_id: characterId, job_key: jobKey, level, experience, completed, updated_at: new Date() })
-    .onConflict((oc) => oc.columns(['character_id', 'job_key']).doUpdateSet({
-      level,
-      experience,
-      completed,
-      updated_at: new Date(),
-    }))
-    .execute();
-
-  return {
-    jobKey,
-    name: job.name,
-    level,
-    experience,
-    completed,
-    nextLevelExperience: threshold,
-  };
-};
-
-export const recordCompletion = async (
-  characterId: number,
-  jobKey: string,
-  experienceGain: number,
-): Promise<JobProgressView> => {
-  const result = await db().transaction().execute((trx) => persistCompletion(trx, characterId, jobKey, experienceGain));
-  await advanceQuestSafe(characterId, 'first_job');
-  return result;
-};
+interface ActiveAssignment{jobKey:string;steps:Step[];stepIndex:number;issuedAt:number;payoutCash:string;}
+const active=new Map<number,ActiveAssignment>(),TARGET_RADIUS=8;
+const nextLevelExperience=(level:number)=>100+Math.max(0,level-1)*75;
+const definition=(key:string)=>{const j=JOBS[key];if(!j)throw new Error('UNKNOWN_JOB');return j;};
+const payout=(base:string,jobLevel:number)=>(Number(base)*(1+Math.min(Math.max(jobLevel-1,0),10)*.04)).toFixed(2);
+const rotate=<T>(a:readonly T[],offset:number):T[]=>a.map((_,i)=>a[(i+offset)%a.length]!).filter(Boolean);
+const toAssignment=(a:ActiveAssignment):JobAssignmentView=>{const j=definition(a.jobKey),step=a.steps[a.stepIndex];if(!step)throw new Error('INVALID_JOB_STEP');return{jobKey:a.jobKey,name:j.name,description:j.description,step:a.stepIndex+1,totalSteps:a.steps.length,target:{x:step.x,y:step.y,z:step.z},rewardCash:a.payoutCash,experienceReward:j.experienceReward,requiredCharacterLevel:j.requiredLevel,currentAction:step.action,vehicleRequired:!!step.vehicle,actionDurationMs:step.durationMs};};
+export const listProgress=async(c:number):Promise<JobProgressView[]>=>{const [rows,ch]=await Promise.all([db().selectFrom('job_progress').select(['job_key','level','experience','completed']).where('character_id','=',c).execute(),db().selectFrom('characters').select('level').where('id','=',c).executeTakeFirstOrThrow()]);const by=new Map(rows.map(r=>[r.job_key,r]));return Object.entries(JOBS).map(([key,j])=>{const r=by.get(key),level=r?.level??1;return{jobKey:key,name:j.name,description:j.description,level,experience:r?.experience??0,completed:r?.completed??0,nextLevelExperience:nextLevelExperience(level),requiredCharacterLevel:j.requiredLevel,unlocked:ch.level>=j.requiredLevel};});};
+export const getActiveAssignment=(c:number):JobAssignmentView|null=>{const a=active.get(c);return a?toAssignment(a):null;};
+export const startAssignment=async(c:number,key:string):Promise<JobAssignmentView>=>{const j=definition(key);if(active.has(c))throw new Error('JOB_ALREADY_ACTIVE');const [ch,progress]=await Promise.all([db().selectFrom('characters').select('level').where('id','=',c).where('deleted_at','is',null).executeTakeFirst(),db().selectFrom('job_progress').select('level').where('character_id','=',c).where('job_key','=',key).executeTakeFirst()]);if(!ch)throw new Error('CHARACTER_NOT_FOUND');if(ch.level<j.requiredLevel)throw new Error('JOB_LEVEL_REQUIRED');const day=Math.floor(Date.now()/86400000),steps=rotate(j.steps,Math.abs(c+day)%j.steps.length);const a:ActiveAssignment={jobKey:key,steps,stepIndex:0,issuedAt:Date.now(),payoutCash:payout(j.rewardCash,progress?.level??1)};active.set(c,a);return toAssignment(a);};
+export const cancelAssignment=(c:number)=>active.delete(c);
+const distance=(a:JobTarget,b:JobTarget)=>Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);
+export const completeAssignmentStep=async(c:number,position:JobTarget,inVehicle:boolean):Promise<JobStepResult>=>{const a=active.get(c);if(!a)throw new Error('JOB_NOT_ACTIVE');const j=definition(a.jobKey),target=a.steps[a.stepIndex];if(!target)throw new Error('INVALID_JOB_STEP');if(distance(position,target)>TARGET_RADIUS)throw new Error('JOB_TOO_FAR');if(target.vehicle&&!inVehicle)throw new Error('JOB_VEHICLE_REQUIRED');if(Date.now()-a.issuedAt<target.durationMs)throw new Error('JOB_TOO_FAST');if(a.stepIndex+1<a.steps.length){a.stepIndex++;a.issuedAt=Date.now();return{completed:false,assignment:toAssignment(a),payoutCash:'0.00',progress:null};}const progress=await db().transaction().execute(async trx=>{const pr=await persistCompletion(trx,c,a.jobKey,j.experienceReward);await trx.updateTable('characters').set({cash:sql<string>`cash+${a.payoutCash}::numeric`,updated_at:new Date()}).where('id','=',c).where('deleted_at','is',null).executeTakeFirstOrThrow();await trx.insertInto('economy_ledger').values({character_id:c,family_id:null,source:`job:${a.jobKey}`,direction:'source',amount:a.payoutCash,metadata:{jobKey:a.jobKey,steps:a.steps.length}}).execute();return pr;});active.delete(c);await advanceQuestSafe(c,'first_job');return{completed:true,assignment:null,payoutCash:a.payoutCash,progress};};
+const persistCompletion=async(trx:Transaction<Database>,c:number,key:string,gain:number):Promise<JobProgressView>=>{const j=definition(key),ch=await trx.selectFrom('characters').select('level').where('id','=',c).executeTakeFirstOrThrow(),cur=await trx.selectFrom('job_progress').select(['level','experience','completed']).where('character_id','=',c).where('job_key','=',key).forUpdate().executeTakeFirst();let level=cur?.level??1,experience=(cur?.experience??0)+gain,threshold=nextLevelExperience(level);while(experience>=threshold){experience-=threshold;level++;threshold=nextLevelExperience(level);}const completed=(cur?.completed??0)+1;await trx.insertInto('job_progress').values({character_id:c,job_key:key,level,experience,completed,updated_at:new Date()}).onConflict(oc=>oc.columns(['character_id','job_key']).doUpdateSet({level,experience,completed,updated_at:new Date()})).execute();return{jobKey:key,name:j.name,description:j.description,level,experience,completed,nextLevelExperience:threshold,requiredCharacterLevel:j.requiredLevel,unlocked:ch.level>=j.requiredLevel};};
+export const recordCompletion=async(c:number,key:string,gain:number)=>{const r=await db().transaction().execute(trx=>persistCompletion(trx,c,key,gain));await advanceQuestSafe(c,'first_job');return r;};
