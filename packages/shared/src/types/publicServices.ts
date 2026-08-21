@@ -14,3 +14,6 @@ export interface MedicalRecordView { id:string;targetCharacterId:number;medicCha
 export interface MedicalHistoryRequest { targetCharacterId:number; }
 export interface MedicalTreatRequest { targetCharacterId:number;diagnosis:string;treatment:string;healTo:number; }
 export interface MedicalTreatResult { health:number;record:MedicalRecordView; }
+export interface MedicalTargetRequest { targetPlayerId:number; }
+export interface MedicalStateView { characterId:number;downed:boolean;downedAt:string|null;bleedoutAt:string|null;hospitalizedUntil:string|null;lastCause:string|null; }
+export interface MedicalActionResult { success:true;state:MedicalStateView;health:number; }
