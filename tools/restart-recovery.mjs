@@ -24,9 +24,9 @@ try{
  const ch=(await second.query('SELECT position_x,position_y,position_z,dimension,cash,bank FROM characters WHERE id=$1',[characterId])).rows[0];
  assert.equal(Number(ch.position_x),123.25);assert.equal(Number(ch.position_y),456.5);assert.equal(Number(ch.position_z),78.75);assert.equal(ch.dimension,12);assert.equal(Number(ch.cash),1000);assert.equal(Number(ch.bank),5000);
  const job=(await second.query('SELECT job_key,step_index,state FROM active_job_assignments WHERE character_id=$1',[characterId])).rows[0];assert.equal(job.job_key,'trucker');assert.equal(job.step_index,2);assert.equal(job.state.currentAction,'Разгрузите груз');
- const family=(await second.query('SELECT family_id FROM family_members WHERE character_id=$1',[characterId])).rows[0];assert.equal(family.family_id,familyId);
- const org=(await second.query('SELECT organization_id,on_duty FROM organization_members WHERE character_id=$1',[characterId])).rows[0];assert.equal(org.organization_id,orgId);assert.equal(org.on_duty,true);
- const property=(await second.query('SELECT owner_character_id,tax_paid_until FROM properties WHERE id=$1',[propertyId])).rows[0];assert.equal(property.owner_character_id,characterId);assert.ok(property.tax_paid_until);
+ const family=(await second.query('SELECT family_id FROM family_members WHERE character_id=$1',[characterId])).rows[0];assert.equal(String(family.family_id),String(familyId));
+ const org=(await second.query('SELECT organization_id,on_duty FROM organization_members WHERE character_id=$1',[characterId])).rows[0];assert.equal(String(org.organization_id),String(orgId));assert.equal(org.on_duty,true);
+ const property=(await second.query('SELECT owner_character_id,tax_paid_until FROM properties WHERE id=$1',[propertyId])).rows[0];assert.equal(String(property.owner_character_id),String(characterId));assert.ok(property.tax_paid_until);
  const receipt=(await second.query("SELECT result FROM operation_receipts WHERE scope='marketplace.buy' AND operation_key='restart-op-1'")).rows[0];assert.equal(receipt.result.status,'committed');
  let duplicateRejected=false;try{await second.query("INSERT INTO operation_receipts(character_id,scope,operation_key) VALUES($1,'marketplace.buy','restart-op-1')",[characterId]);}catch(e){duplicateRejected=e?.code==='23505';}assert.equal(duplicateRejected,true,'operation receipt must stay unique across restart');
  console.log('[restart-recovery] OK: isolated character + job + family + organization + property + operation receipt survive a fresh process connection');
