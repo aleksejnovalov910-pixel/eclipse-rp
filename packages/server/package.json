@@ -9,10 +9,9 @@
   },
   "dependencies": {
     "kysely": "^0.28.17",
-    "pg": "^8.13.1"
+    "mysql2": "^3.15.3"
   },
   "devDependencies": {
-    "@types/pg": "^8.11.10",
     "@ragempcommunity/types-server": "^2.1.9"
   }
 }
