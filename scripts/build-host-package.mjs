@@ -26,7 +26,7 @@ set -a
 . "$ENV_FILE"
 set +a
 command -v node >/dev/null 2>&1 || { echo "[preflight] Node.js 20+ is required."; exit 1; }
-NODE_MAJOR="$(node -p 'Number(process.versions.node.split(`.`)[0])')"
+NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
 [ "$NODE_MAJOR" -ge 20 ] || { echo "[preflight] Node.js 20+ required, found $(node -v)."; exit 1; }
 for key in DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD; do
   value="\${!key:-}"
@@ -49,7 +49,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 command -v node >/dev/null 2>&1 || { echo "[install] Install Node.js 20+ before continuing."; exit 1; }
-NODE_MAJOR="$(node -p 'Number(process.versions.node.split(`.`)[0])')"
+NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
 [ "$NODE_MAJOR" -ge 20 ] || { echo "[install] Node.js 20+ required, found $(node -v)."; exit 1; }
 if [ ! -f .env ]; then cp .env.example .env; echo "[install] Created .env from .env.example"; else echo "[install] Keeping existing .env"; fi
 if [ ! -f conf.json ]; then cp conf.json.example conf.json; echo "[install] Created conf.json from conf.json.example"; else echo "[install] Keeping existing conf.json"; fi
