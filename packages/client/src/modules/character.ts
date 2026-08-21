@@ -1,4 +1,4 @@
-import { RpcEvent, ServerEvent, type CharacterAppearance } from '@eclipse/shared';
+import { RpcEvent, ServerEvent, type CharacterAppearance, type OutfitComponents } from '@eclipse/shared';
 import { allowFromCef } from '../core/cefBridge';
 
 const applyAppearance = (appearance: CharacterAppearance): void => {
@@ -31,6 +31,16 @@ const applyAppearance = (appearance: CharacterAppearance): void => {
   player.setHeadOverlay(1, beard, appearance.beardOpacity, appearance.beardColor, appearance.beardColor);
 };
 
+const applyOutfit = (components: OutfitComponents): void => {
+  const player = mp.players.local;
+  for (const [componentId, state] of Object.entries(components)) {
+    const id = Number(componentId);
+    if (!Number.isInteger(id) || id < 0 || id > 11) continue;
+    if (!state || !Number.isInteger(state.drawable) || !Number.isInteger(state.texture)) continue;
+    player.setComponentVariation(id, state.drawable, state.texture, 0);
+  }
+};
+
 export const registerCharacterModule = (): void => {
   allowFromCef(
     RpcEvent.CharacterList,
@@ -44,8 +54,15 @@ export const registerCharacterModule = (): void => {
       const appearance = JSON.parse(payloadJson) as CharacterAppearance;
       applyAppearance(appearance);
     } catch {
-      // Серверная валидация гарантирует корректный payload; повреждённое
-      // сетевое сообщение просто не применяется, не ломая клиент.
+      // Corrupted network payload is ignored instead of breaking the client.
+    }
+  });
+
+  mp.events.add(ServerEvent.OutfitState, (payloadJson: string) => {
+    try {
+      applyOutfit(JSON.parse(payloadJson) as OutfitComponents);
+    } catch {
+      // Outfit state is server-owned; malformed payload is ignored safely.
     }
   });
 };
