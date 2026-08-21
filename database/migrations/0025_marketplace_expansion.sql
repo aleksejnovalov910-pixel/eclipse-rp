@@ -24,5 +24,18 @@ CREATE TABLE IF NOT EXISTS marketplace_bids (
 CREATE INDEX IF NOT EXISTS marketplace_bids_listing_idx ON marketplace_bids(listing_id,amount DESC,created_at DESC);
 CREATE INDEX IF NOT EXISTS marketplace_bids_bidder_idx ON marketplace_bids(bidder_character_id,created_at DESC);
 
+CREATE TABLE IF NOT EXISTS marketplace_history (
+  id BIGSERIAL PRIMARY KEY,
+  listing_id UUID NOT NULL REFERENCES marketplace_listings(id) ON DELETE CASCADE,
+  character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  kind VARCHAR(20) NOT NULL CHECK (kind IN ('sale','purchase','bid','auction_win','auction_sale')),
+  object_type VARCHAR(24) NOT NULL CHECK (object_type IN ('vehicle','property','business','item')),
+  title VARCHAR(120) NOT NULL,
+  amount NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+  counterparty_character_id INTEGER NULL REFERENCES characters(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS marketplace_history_character_idx ON marketplace_history(character_id,created_at DESC);
+
 CREATE INDEX IF NOT EXISTS marketplace_search_idx ON marketplace_listings(object_type,listing_type,status,created_at DESC);
 CREATE INDEX IF NOT EXISTS marketplace_title_search_idx ON marketplace_listings USING gin (to_tsvector('simple',title));
