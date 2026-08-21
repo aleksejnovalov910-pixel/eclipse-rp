@@ -21,3 +21,4 @@ export * from './types/store';
 export * from './types/economy';
 export * from './types/phone';
 export * from './types/quest';
+export * from './types/crafting';
