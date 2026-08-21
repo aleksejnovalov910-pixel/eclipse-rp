@@ -17,11 +17,16 @@ export const mysqlize = (source, file = '') => {
   sql = sql.replace(/ALTER TABLE\s+([^\s]+)\s+ADD COLUMN IF NOT EXISTS/gi, 'ALTER TABLE $1 ADD COLUMN');
   sql = sql.replace(/\bBOOLEAN\b/gi, 'TINYINT(1)');
   sql = sql.replace(/\bTRUE\b/gi, '1').replace(/\bFALSE\b/gi, '0');
-  sql = sql.replace(/INSERT\s+INTO([\s\S]*?)ON\s+CONFLICT\s+DO\s+NOTHING\s*;/gi, 'INSERT IGNORE INTO$1;');
+
+  // PostgreSQL upserts -> MySQL.
+  sql = sql.replace(/ON\s+CONFLICT\s*\([^)]*\)\s+DO\s+UPDATE\s+SET/gi, 'ON DUPLICATE KEY UPDATE');
+  sql = sql.replace(/EXCLUDED\.([a-zA-Z_][a-zA-Z0-9_]*)/g, 'VALUES($1)');
+  sql = sql.replace(/INSERT\s+INTO([\s\S]*?)ON\s+CONFLICT(?:\s*\([^)]*\))?\s+DO\s+NOTHING\s*;/gi, 'INSERT IGNORE INTO$1;');
 
   // MySQL reserved identifiers used by the existing portable Kysely schema.
   sql = sql.replace(/(^|\n)(\s*)key(\s+VARCHAR\s*\([^\n]+)/gi, '$1$2`key`$3');
   sql = sql.replace(/item_definitions\s*\(\s*key\s*\)/gi, 'item_definitions(`key`)');
+  sql = sql.replace(/item_definitions\s*\(\s*key\s*,/gi, 'item_definitions (`key`,');
 
   if (file === '0001_init.sql') {
     sql = sql.replace(/CREATE UNIQUE INDEX characters_account_slot_key[\s\S]*?WHERE deleted_at IS NULL;/i,
