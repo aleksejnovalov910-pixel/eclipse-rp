@@ -5,11 +5,12 @@ const admin=new pg.Client(config);await admin.connect();
 let sellerId,buyerA,buyerB,listingId,itemId,businessId;
 try{
  await admin.query('TRUNCATE marketplace_history, marketplace_bids, marketplace_item_escrow, marketplace_listings, inventory_items, inventories, characters, accounts RESTART IDENTITY CASCADE');
+ await admin.query("INSERT INTO item_definitions(key,name,category,weight,stack_size,tradable,droppable,metadata) VALUES('race_item','Race Item','misc',1,100,TRUE,TRUE,'{}'::jsonb) ON CONFLICT(key) DO UPDATE SET name=EXCLUDED.name");
  const mk=async(login,first)=>{const a=(await admin.query('INSERT INTO accounts(login,login_lower,email,password_hash) VALUES($1,$1,$2,\'x\') RETURNING id',[login,`${login}@race.test`])).rows[0];const lower=`${first} race`.toLowerCase();return (await admin.query("INSERT INTO characters(account_id,slot,first_name,last_name,name_lower,gender,cash,bank) VALUES($1,0,$2::varchar,'Race',$3::varchar,'male',1000,100000) RETURNING id",[a.id,first,lower])).rows[0].id;};
  sellerId=await mk('race_seller','Seller');buyerA=await mk('race_a','BuyerA');buyerB=await mk('race_b','BuyerB');
  listingId=(await admin.query("INSERT INTO marketplace_listings(seller_character_id,object_type,object_id,title,price,status,listing_type) VALUES($1,'item','race-object','Race Listing',5000,'active','fixed') RETURNING id",[sellerId])).rows[0].id;
  const inv=(await admin.query("INSERT INTO inventories(owner_type,owner_id,capacity_weight,slots) VALUES('business','999991',1000,50) RETURNING id")).rows[0];
- itemId=(await admin.query("INSERT INTO inventory_items(inventory_id,item_key,slot,quantity) VALUES($1,'water',0,10) RETURNING id",[inv.id])).rows[0].id;
+ itemId=(await admin.query("INSERT INTO inventory_items(inventory_id,item_key,slot,quantity) VALUES($1,'race_item',0,10) RETURNING id",[inv.id])).rows[0].id;
  businessId=(await admin.query("INSERT INTO businesses(kind,name,price,owner_character_id,position_x,position_y,position_z) VALUES('shop','Race Business',50000,NULL,0,0,0) RETURNING id")).rows[0].id;
 }finally{await admin.end();}
 const clients=await Promise.all([0,1,2,3,4,5].map(async()=>{const c=new pg.Client(config);await c.connect();return c;}));
