@@ -22,6 +22,8 @@ export interface OrganizationRanksTable { id:Generated<string>;organization_id:s
 export interface OrganizationMembersTable { organization_id:string;character_id:number;rank_id:string;on_duty:Generated<boolean>;joined_at:Timestamp;updated_at:Timestamp; }
 export interface OrganizationCallsTable { id:Generated<string>;organization_kind:string;caller_character_id:number|null;assigned_character_id:number|null;status:Generated<string>;message:string;position_x:string;position_y:string;position_z:string;created_at:Timestamp;updated_at:Timestamp;closed_at:TimestampNullable; }
 export interface OrganizationAuditLogTable { id:Generated<string>;organization_id:string|null;actor_character_id:number|null;target_character_id:number|null;action:string;metadata:Generated<JsonValue>;created_at:Timestamp; }
+export interface PoliceRecordsTable { id:Generated<string>;target_character_id:number;officer_character_id:number|null;kind:string;reason:string;amount:string|null;wanted_level:number|null;active:Generated<boolean>;metadata:Generated<JsonValue>;created_at:Timestamp;resolved_at:TimestampNullable; }
+export interface MedicalRecordsTable { id:Generated<string>;target_character_id:number;medic_character_id:number|null;diagnosis:string;treatment:string;health_before:number;health_after:number;created_at:Timestamp; }
 export interface JobProgressTable { character_id:number;job_key:string;level:Generated<number>;experience:Generated<number>;completed:Generated<number>;updated_at:Timestamp; }
 export interface EconomyLedgerTable { id:Generated<string>;character_id:number|null;family_id:string|null;source:string;direction:string;amount:string;metadata:Generated<JsonValue>;created_at:Timestamp; }
 export interface PhoneContactsTable { id:Generated<string>;owner_character_id:number;phone_number:string;display_name:string;created_at:Timestamp;updated_at:Timestamp; }
@@ -35,6 +37,7 @@ export interface Database {
   item_definitions:ItemDefinitionsTable;inventories:InventoriesTable;inventory_items:InventoryItemsTable;vehicles:VehiclesTable;
   families:FamiliesTable;family_ranks:FamilyRanksTable;family_members:FamilyMembersTable;family_contracts:FamilyContractsTable;family_audit_log:FamilyAuditLogTable;
   organizations:OrganizationsTable;organization_ranks:OrganizationRanksTable;organization_members:OrganizationMembersTable;organization_calls:OrganizationCallsTable;organization_audit_log:OrganizationAuditLogTable;
+  police_records:PoliceRecordsTable;medical_records:MedicalRecordsTable;
   job_progress:JobProgressTable;economy_ledger:EconomyLedgerTable;phone_contacts:PhoneContactsTable;phone_messages:PhoneMessagesTable;
   quest_definitions:QuestDefinitionsTable;quest_progress:QuestProgressTable;_migrations:MigrationsTable;
 }
