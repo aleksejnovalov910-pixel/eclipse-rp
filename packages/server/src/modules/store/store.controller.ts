@@ -1,0 +1,7 @@
+import { ErrorCode,RpcEvent,SessionState,err,ok,type StoreProductView,type StorePurchaseResult } from '@eclipse/shared';
+import { consume } from '../../core/rateLimit';
+import { onRpc } from '../../core/rpc';
+import { buyStoreProduct,listStoreProducts } from './store.service';
+const cid=(ctx:any):number|null=>ctx.session.state===SessionState.Playing&&ctx.session.characterId!==null?ctx.session.characterId:null;
+const map=(e:unknown)=>{const c=e instanceof Error?e.message:'';if(c==='INSUFFICIENT_FUNDS')return err(ErrorCode.InsufficientFunds);if(['INVALID_QUANTITY','PRODUCT_NOT_FOUND','TOO_FAR','OUT_OF_STOCK','INVENTORY_OVERWEIGHT','INVENTORY_FULL'].includes(c))return err(ErrorCode.Validation,{reason:c.toLowerCase()});throw e;};
+export const registerStoreModule=():void=>{const read={max:40,windowMs:60000},write={max:20,windowMs:60000};onRpc<unknown,StoreProductView[]>(RpcEvent.StoreProducts,async ctx=>{const l=consume(ctx.session,'store:products',read);if(l)return l;if(cid(ctx)===null)return err(ErrorCode.Unauthorized);return ok(await listStoreProducts());});onRpc<{businessId?:string;itemKey?:string;quantity?:number},StorePurchaseResult>(RpcEvent.StoreBuy,async(ctx,p)=>{const l=consume(ctx.session,'store:buy',write);if(l)return l;const c=cid(ctx);if(c===null)return err(ErrorCode.Unauthorized);if(typeof p?.businessId!=='string'||typeof p?.itemKey!=='string'||!Number.isInteger(p?.quantity))return err(ErrorCode.Validation);try{return ok(await buyStoreProduct(c,ctx.player,p.businessId,p.itemKey,p.quantity!));}catch(e){return map(e);}});};
