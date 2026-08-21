@@ -17,13 +17,13 @@ const normalizeType=(type)=>({
  decimal:'numeric',int:'integer',
  datetime:'timestamp with time zone',timestamp:'timestamp with time zone',
  json:'jsonb',tinyint:'boolean'
-}[type]??type);
+}[String(type??'').toLowerCase()]??String(type??'').toLowerCase());
 
 const db={
  async query(sql,params=[]){
   if(/FROM\s+pg_indexes/i.test(sql)){
    const [rows]=await connection.execute(
-    `SELECT index_name FROM information_schema.statistics WHERE table_schema=DATABASE() AND index_name=? LIMIT 1`,
+    `SELECT INDEX_NAME AS index_name FROM information_schema.statistics WHERE table_schema=DATABASE() AND index_name=? LIMIT 1`,
     ['marketplace_active_object_uq']
    );
    return {rows};
@@ -39,7 +39,7 @@ const db={
 };
 
 try{
- const column=async(table,name)=>{const row=(await db.query(`SELECT data_type FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?`,[table,name])).rows[0];return row?{...row,data_type:normalizeType(row.data_type)}:row;};
+ const column=async(table,name)=>{const row=(await db.query(`SELECT DATA_TYPE AS data_type FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?`,[table,name])).rows[0];return row?{...row,data_type:normalizeType(row.data_type)}:row;};
  const vehicleId=await column('vehicles','id'),accessVehicleId=await column('vehicle_access','vehicle_id'),marketObjectId=await column('marketplace_listings','object_id'),vehicleTuning=await column('vehicles','tuning');assert.equal(vehicleId?.data_type,'bigint');assert.equal(accessVehicleId?.data_type,'bigint');assert.equal(marketObjectId?.data_type,'character varying');assert.equal(vehicleTuning?.data_type,'jsonb');
  const marketType=await column('marketplace_listings','listing_type'),marketBid=await column('marketplace_listings','current_bid'),marketQty=await column('marketplace_listings','quantity'),escrow=await column('marketplace_item_escrow','item_key'),bidAmount=await column('marketplace_bids','amount'),historyAmount=await column('marketplace_history','amount');assert.equal(marketType?.data_type,'character varying');assert.equal(marketBid?.data_type,'numeric');assert.equal(marketQty?.data_type,'integer');assert.equal(escrow?.data_type,'character varying');assert.equal(bidAmount?.data_type,'numeric');assert.equal(historyAmount?.data_type,'numeric');
  const phoneCallStatus=await column('phone_calls','status'),phoneCallEnded=await column('phone_calls','ended_at'),classifiedCategory=await column('phone_classifieds','category'),classifiedExpiry=await column('phone_classifieds','expires_at');assert.equal(phoneCallStatus?.data_type,'character varying');assert.equal(phoneCallEnded?.data_type,'timestamp with time zone');assert.equal(classifiedCategory?.data_type,'character varying');assert.equal(classifiedExpiry?.data_type,'timestamp with time zone');
