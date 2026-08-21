@@ -1,115 +1,13 @@
 /**
- * Конфигурация сервера.
- *
- * Принцип: ни одного секрета в коде и ни одного «магического» значения,
- * разбросанного по модулям. Всё читается из окружения один раз при старте,
- * валидируется и дальше используется как иммутабельный объект.
- * Если обязательная переменная отсутствует — сервер не стартует. Это
- * намеренно: тихий запуск с дефолтным паролем БД опаснее, чем падение.
+ * Конфигурация сервера. Секреты читаются только из окружения.
  */
-
-const required = (key: string): string => {
-  const value = process.env[key];
-  if (value === undefined || value === '') {
-    throw new Error(`[config] Отсутствует обязательная переменная окружения: ${key}`);
-  }
-  return value;
-};
-
-const optional = (key: string, fallback: string): string => process.env[key] ?? fallback;
-
-const asInt = (key: string, fallback: number): number => {
-  const raw = process.env[key];
-  if (raw === undefined || raw === '') return fallback;
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed)) {
-    throw new Error(`[config] Переменная ${key} должна быть целым числом, получено: "${raw}"`);
-  }
-  return parsed;
-};
-
-const asBool = (key: string, fallback: boolean): boolean => {
-  const raw = process.env[key];
-  if (raw === undefined || raw === '') return fallback;
-  return raw === 'true' || raw === '1';
-};
-
-export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error';
-
-const LOG_LEVELS: readonly LogLevel[] = ['trace', 'debug', 'info', 'warn', 'error'];
-
-const asLogLevel = (key: string, fallback: LogLevel): LogLevel => {
-  const raw = process.env[key];
-  if (raw === undefined || raw === '') return fallback;
-  if (!LOG_LEVELS.includes(raw as LogLevel)) {
-    throw new Error(`[config] Недопустимый ${key}: "${raw}". Ожидается одно из: ${LOG_LEVELS.join(', ')}`);
-  }
-  return raw as LogLevel;
-};
-
-export interface EclipseConfig {
-  readonly env: 'development' | 'production';
-  readonly serverName: string;
-  readonly logLevel: LogLevel;
-  readonly db: {
-    readonly host: string;
-    readonly port: number;
-    readonly database: string;
-    readonly user: string;
-    readonly password: string;
-    readonly poolMax: number;
-  };
-  readonly redis: {
-    readonly enabled: boolean;
-    readonly host: string;
-    readonly port: number;
-    readonly password: string | undefined;
-  };
-  readonly auth: {
-    readonly maxAttempts: number;
-    readonly lockoutSeconds: number;
-  };
-  readonly world: {
-    /** Период автосохранения играющих. 0 отключает его полностью. */
-    readonly autosaveSeconds: number;
-  };
-}
-
-let cached: EclipseConfig | null = null;
-
-export const loadConfig = (): EclipseConfig => {
-  if (cached) return cached;
-
-  const env = optional('NODE_ENV', 'development') === 'production' ? 'production' : 'development';
-
-  cached = {
-    env,
-    serverName: optional('ECLIPSE_SERVER_NAME', 'ECLIPSE RP'),
-    logLevel: asLogLevel('LOG_LEVEL', env === 'production' ? 'info' : 'debug'),
-    db: {
-      host: optional('DB_HOST', '127.0.0.1'),
-      port: asInt('DB_PORT', 5432),
-      database: required('DB_NAME'),
-      user: required('DB_USER'),
-      password: required('DB_PASSWORD'),
-      poolMax: asInt('DB_POOL_MAX', 10),
-    },
-    redis: {
-      enabled: asBool('REDIS_ENABLED', false),
-      host: optional('REDIS_HOST', '127.0.0.1'),
-      port: asInt('REDIS_PORT', 6379),
-      password: process.env['REDIS_PASSWORD'] || undefined,
-    },
-    auth: {
-      maxAttempts: asInt('AUTH_MAX_ATTEMPTS', 5),
-      lockoutSeconds: asInt('AUTH_LOCKOUT_SECONDS', 300),
-    },
-    world: {
-      // Три минуты: потеря такого объёма прогресса при краше терпима,
-      // а нагрузка на базу остаётся незаметной даже на большом онлайне.
-      autosaveSeconds: asInt('AUTOSAVE_SECONDS', 180),
-    },
-  };
-
-  return cached;
-};
+const required=(key:string):string=>{const value=process.env[key];if(value===undefined||value==='')throw new Error(`[config] Отсутствует обязательная переменная окружения: ${key}`);return value;};
+const optional=(key:string,fallback:string):string=>process.env[key]??fallback;
+const asInt=(key:string,fallback:number):number=>{const raw=process.env[key];if(raw===undefined||raw==='')return fallback;const parsed=Number.parseInt(raw,10);if(!Number.isFinite(parsed))throw new Error(`[config] Переменная ${key} должна быть целым числом, получено: "${raw}"`);return parsed;};
+const asBool=(key:string,fallback:boolean):boolean=>{const raw=process.env[key];if(raw===undefined||raw==='')return fallback;return raw==='true'||raw==='1';};
+export type LogLevel='trace'|'debug'|'info'|'warn'|'error';
+const LOG_LEVELS:readonly LogLevel[]=['trace','debug','info','warn','error'];
+const asLogLevel=(key:string,fallback:LogLevel):LogLevel=>{const raw=process.env[key];if(raw===undefined||raw==='')return fallback;if(!LOG_LEVELS.includes(raw as LogLevel))throw new Error(`[config] Недопустимый ${key}: "${raw}". Ожидается одно из: ${LOG_LEVELS.join(', ')}`);return raw as LogLevel;};
+export interface EclipseConfig{readonly env:'development'|'production';readonly serverName:string;readonly logLevel:LogLevel;readonly db:{readonly host:string;readonly port:number;readonly database:string;readonly user:string;readonly password:string;readonly poolMax:number;};readonly redis:{readonly enabled:boolean;readonly host:string;readonly port:number;readonly password:string|undefined;};readonly auth:{readonly maxAttempts:number;readonly lockoutSeconds:number;};readonly world:{readonly autosaveSeconds:number;};}
+let cached:EclipseConfig|null=null;
+export const loadConfig=():EclipseConfig=>{if(cached)return cached;const env=optional('NODE_ENV','development')==='production'?'production':'development';cached={env,serverName:optional('ECLIPSE_SERVER_NAME','ECLIPSE RP'),logLevel:asLogLevel('LOG_LEVEL',env==='production'?'info':'debug'),db:{host:optional('DB_HOST','127.0.0.1'),port:asInt('DB_PORT',3306),database:required('DB_NAME'),user:required('DB_USER'),password:required('DB_PASSWORD'),poolMax:asInt('DB_POOL_MAX',10)},redis:{enabled:asBool('REDIS_ENABLED',false),host:optional('REDIS_HOST','127.0.0.1'),port:asInt('REDIS_PORT',6379),password:process.env['REDIS_PASSWORD']||undefined},auth:{maxAttempts:asInt('AUTH_MAX_ATTEMPTS',5),lockoutSeconds:asInt('AUTH_LOCKOUT_SECONDS',300)},world:{autosaveSeconds:asInt('AUTOSAVE_SECONDS',180)}};return cached;};
