@@ -14,13 +14,11 @@ try{
  const org=(await first.query("SELECT id FROM organizations ORDER BY created_at LIMIT 1")).rows[0];orgId=org.id;
  const orgRank=(await first.query('SELECT id FROM organization_ranks WHERE organization_id=$1 ORDER BY rank_index DESC LIMIT 1',[orgId])).rows[0];
  await first.query('INSERT INTO organization_members(organization_id,character_id,rank_id,on_duty) VALUES($1,$2,$3,TRUE)',[orgId,characterId,orgRank.id]);
- const prop=(await first.query("SELECT id FROM properties WHERE owner_character_id IS NULL LIMIT 1")).rows[0];propertyId=prop.id;
- await first.query('UPDATE properties SET owner_character_id=$1,tax_paid_until=NOW()+INTERVAL \'7 days\' WHERE id=$2',[characterId,propertyId]);
+ const prop=(await first.query("INSERT INTO properties(kind,name,price,owner_character_id,exterior_x,exterior_y,exterior_z,exterior_heading,exterior_dimension,interior_x,interior_y,interior_z,interior_heading,instance_dimension,tax_paid_until) VALUES('house','Recovery House',100000,$1,10,20,30,0,0,100,200,300,0,19991,NOW()+INTERVAL '7 days') RETURNING id",[characterId])).rows[0];propertyId=prop.id;
  await first.query("INSERT INTO active_job_assignments(character_id,job_key,step_index,state,issued_at) VALUES($1,'trucker',2,$2::jsonb,NOW()-INTERVAL '30 seconds')",[characterId,JSON.stringify({payoutCash:'2100.00',routeSeed:'recovery-test',currentAction:'Разгрузите груз'})]);
  await first.query("INSERT INTO operation_receipts(character_id,scope,operation_key,result) VALUES($1,'marketplace.buy','restart-op-1',$2::jsonb)",[characterId,JSON.stringify({listingId:'test',status:'committed'})]);
 }finally{await first.end();}
 
-// Эмулируем новый процесс после restart: новое физическое соединение и никаких данных из памяти Node.js.
 const second=new pg.Client(config);await second.connect();
 try{
  const ch=(await second.query('SELECT position_x,position_y,position_z,dimension,cash,bank FROM characters WHERE id=$1',[characterId])).rows[0];
@@ -31,5 +29,5 @@ try{
  const property=(await second.query('SELECT owner_character_id,tax_paid_until FROM properties WHERE id=$1',[propertyId])).rows[0];assert.equal(property.owner_character_id,characterId);assert.ok(property.tax_paid_until);
  const receipt=(await second.query("SELECT result FROM operation_receipts WHERE scope='marketplace.buy' AND operation_key='restart-op-1'")).rows[0];assert.equal(receipt.result.status,'committed');
  let duplicateRejected=false;try{await second.query("INSERT INTO operation_receipts(character_id,scope,operation_key) VALUES($1,'marketplace.buy','restart-op-1')",[characterId]);}catch(e){duplicateRejected=e?.code==='23505';}assert.equal(duplicateRejected,true,'operation receipt must stay unique across restart');
- console.log('[restart-recovery] OK: character + job + family + organization + property + operation receipt survive a fresh process connection');
+ console.log('[restart-recovery] OK: isolated character + job + family + organization + property + operation receipt survive a fresh process connection');
 }finally{await second.end();}
