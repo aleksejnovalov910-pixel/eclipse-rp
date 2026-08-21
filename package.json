@@ -18,11 +18,14 @@
     "dev:cef": "npm run dev -w @eclipse/cef",
     "typecheck": "tsc -b packages/shared packages/server packages/client",
     "migrate": "node scripts/migrate.mjs",
-    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').rmSync('release',{recursive:true,force:true})\"",
     "test:schema": "node tools/schema-regression.mjs",
     "test:smoke": "node tools/smoke-server.mjs",
     "test:e2e": "node tools/e2e-flow.mjs",
-    "verify": "npm run typecheck && npm run build && npm run test:schema && npm run test:e2e"
+    "host:package": "node scripts/build-host-package.mjs",
+    "host:verify": "node tools/host-package-check.mjs",
+    "host:ready": "npm run build && npm run host:package && npm run host:verify",
+    "verify": "npm run typecheck && npm run build && npm run test:schema && npm run test:e2e && npm run host:package && npm run host:verify"
   },
   "devDependencies": { "esbuild": "^0.25.0", "typescript": "^5.7.2" }
 }
