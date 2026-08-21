@@ -4,5 +4,5 @@ export interface LicenseIssueRequest{targetCharacterId:number;license:'driver'|'
 export interface LicenseRevokeRequest{targetCharacterId:number;license:'driver'|'weapon'|'business'|'air'}
 export interface DocumentShowRequest{targetPlayerId:number}
 export interface DocumentShowResult{shown:true}
-export interface VehicleDocumentView{model:string;vin:string;plate:string|null;insuranceUntil:string|null;ownerCharacterId:number}
+export interface VehicleDocumentView{model:string;vin:string;plate:string|null;insuranceUntil:string|null}
 export interface VehicleDocumentShowRequest{targetPlayerId:number}
