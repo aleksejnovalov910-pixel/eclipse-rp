@@ -23,3 +23,4 @@ export * from './types/phone';
 export * from './types/quest';
 export * from './types/crafting';
 export * from './types/combat';
+export * from './types/casino';
