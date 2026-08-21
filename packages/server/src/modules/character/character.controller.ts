@@ -13,6 +13,7 @@ import { PLAYER_MODELS } from '../../config/world';
 import * as service from './character.service';
 import { beginTracking } from './character.state';
 import { advanceQuestSafe } from '../quests/quest.service';
+import { currentOutfit } from '../customization/customization.service';
 
 const log = createLogger('character:rpc');
 
@@ -53,6 +54,8 @@ export const registerCharacterModule = (): void => {
     spawn(ctx.player, result.data);
     beginTracking(ctx.session);
     ctx.player.call(ServerEvent.CharacterAppearance, [JSON.stringify(result.data.appearance)]);
+    const outfit = await currentOutfit(result.data.characterId);
+    ctx.player.call(ServerEvent.OutfitState, [JSON.stringify(outfit.components)]);
     ctx.player.call(ServerEvent.SessionState, [SessionState.Playing]);
     await advanceQuestSafe(result.data.characterId, 'welcome');
     return { ok: true, data: { characterId: result.data.characterId } };
