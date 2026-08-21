@@ -7,7 +7,7 @@ export const isActivelyListed = async (objectType: MarketplaceObjectType, object
     SELECT id
     FROM marketplace_listings
     WHERE object_type=${objectType}
-      AND object_id=${objectId}::uuid
+      AND object_id=${objectId}
       AND status='active'
       AND expires_at>NOW()
     LIMIT 1
