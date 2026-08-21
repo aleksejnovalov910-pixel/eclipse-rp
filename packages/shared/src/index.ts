@@ -8,6 +8,8 @@ export * from './types/job';
 export * from './types/family';
 export * from './types/organization';
 export * from './types/publicServices';
+export * from './types/documents';
+export * from './types/criminal';
 export * from './types/vehicle';
 export * from './types/property';
 export * from './types/business';
