@@ -69,3 +69,9 @@ INSERT INTO crafting_recipe_inputs(recipe_key,item_key,quantity) VALUES
 ('sandwich_batch','raw_food',4),
 ('phone_basic_build','electronic_parts',5),('phone_basic_build','metal_scrap',1)
 ON CONFLICT(recipe_key,item_key) DO UPDATE SET quantity=EXCLUDED.quantity;
+
+INSERT INTO business_products(business_id,item_key,base_price)
+SELECT b.id,p.item_key,p.base_price FROM businesses b CROSS JOIN (VALUES
+('metal_scrap',90::numeric),('rubber',75::numeric),('cloth_roll',65::numeric),('medical_supplies',120::numeric),('electronic_parts',180::numeric),('raw_food',45::numeric)
+) AS p(item_key,base_price) WHERE b.kind='store'
+ON CONFLICT(business_id,item_key) DO UPDATE SET base_price=EXCLUDED.base_price,enabled=TRUE;
