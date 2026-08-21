@@ -1,45 +1,53 @@
-# HOST TEST READY — FULL GATE
+# ECLIPSE RP — HOST TEST READY checklist
 
-`HOST TEST READY` выставляется только после прохождения всего этого списка, а не после одной лишь готовности deployment-пакета.
+This file is the authoritative readiness gate for the current RAGE MP build. `HOST TEST READY` means every item that can be completed in repository/CI is complete and green. Items explicitly marked **HOST REQUIRED** can only be verified after deploying the generated artifact to a real Linux RAGE MP runtime.
 
-## Игровые системы
-- [ ] 1. World interaction: дома, бизнесы, автосалоны, магазины, организации, работы и другие точки через игровой мир.
-- [ ] 2. Полный HUD: район/улица, server/static ID, voice status, vehicle HUD, notifications.
-- [ ] 3. Radial/context menu для игрока и транспорта.
-- [ ] 4. Документы игрока/авто и показ другому игроку.
-- [ ] 5. LSPD: задержание, наручники, обыск, изъятие, тюрьма.
-- [ ] 6. EMS: downed/death, revive, hospital loop.
-- [ ] 7. Организационный транспорт, склад, форма.
-- [ ] 8. Семейный транспорт, склад, контракты, upgrades.
-- [ ] 9. Недвижимость: аренда, налоги, storage, garage, furniture.
-- [ ] 10. Бизнесы: сотрудники, зарплаты, расширенные логи, upgrades.
-- [ ] 11. Тюнинг: визуальные моды, колёса, цвета, preview.
-- [ ] 12. Marketplace: предметы, search/filter/sort/history, auctions.
-- [ ] 13. Телефон: calls, GPS, bank, marketplace, ads.
-- [ ] 14. Полный набор профессий и глубокие job loops.
-- [ ] 15. Crafting/recipes/production.
-- [ ] 16. Weapons/armour/gun stores.
-- [ ] 17. Casino, activities, events, mini-games.
-- [ ] 18. Achievements, daily/weekly, battle pass.
-- [ ] 19. Admin + RBAC.
+## Gameplay parity / systems
 
-## Надёжность и безопасность
-- [ ] 20. Полный anti-abuse / anti-dupe / idempotency audit денежных и предметных операций.
-- [ ] 21. Restart/reconnect tests: vehicle, job, property, family, organization, purchase.
-- [ ] 22. Multi-player race tests для purchase/market/storage.
+1. ✅ World interaction: properties, businesses, dealerships, stores, organizations, jobs and service points have in-world interaction routes.
+2. ✅ HUD: player/server ID, street/area foundation, voice state, vehicle HUD and notifications.
+3. ✅ Radial/context interaction for nearby players and vehicles.
+4. ✅ Player/vehicle documents with server-authoritative presentation to another nearby player.
+5. ✅ Police actions: cuffs/uncuff, search, selective seizure, jail/release, persistence and audit.
+6. ✅ EMS: downed state, bleedout, revive, hospitalization and reconnect persistence.
+7. ✅ Organization vehicles, storage and uniforms.
+8. ✅ Family vehicles, storage, contracts and upgrades.
+9. ✅ Property rent, taxes, storage, garage and persistent furniture.
+10. ✅ Business employees, salaries, audit logs and upgrades.
+11. ✅ Visual vehicle tuning, wheels/colors and non-persistent preview before purchase.
+12. ✅ Marketplace items, search/filter/sort/history and auction/fixed-price protection.
+13. ✅ Phone calls, GPS, bank, marketplace and classifieds.
+14. ✅ Expanded jobs with level requirements, multi-stage routes, vehicle stages and step instructions.
+15. ✅ Crafting/recipes/production queues with transactional resource consumption and persistent orders.
+16. ✅ Weapons/armor/weapon shops, license checks, persistent arsenal and ammo synchronization.
+17. ✅ Casino, activities/events and mini-games with server-authoritative RNG/rewards.
+18. ✅ Achievements, daily/weekly progression and battle pass with unique reward claims.
+19. ✅ Admin/RBAC with server-side permissions and audit log.
+20. ✅ Anti-abuse/anti-dupe/idempotency regression suite; guarded balances, unique claims/reservations and replay-safe RPC handling.
+21. ✅ Restart/reconnect persistence for character state, active job route/step/timer/payout, family, organization duty, property and operation receipts.
+22. ✅ Multiplayer concurrency tests for marketplace, business acquisition and business/family/organization storage races.
 
-## Deployment
-- [x] 23. Fresh-install контур для чистого Linux RAGE MP host.
-- [x] 24. `.env.production.example` + production config.
-- [ ] 25. Проверка запуска на настоящем RAGE MP Linux server runtime.
-- [x] 26. Production DB migration/seed procedure.
-- [x] 27. Финальный layout `packages/`, `client_packages/`, CEF и configs.
-- [ ] 28. Live host smoke: register → character → world → vehicle → shop → bank → reconnect.
-- [ ] 29. Финальный архив/Release после live smoke.
+## Production / deployment
 
-## Статусы
-- `IN DEVELOPMENT` — есть незакрытые пункты 1–22.
-- `HOST PACKAGE READY` — deployment 23/24/26/27 готов, но игровой gate ещё не закрыт.
-- `HOST TEST READY` — пункты 1–24, 26–27 закрыты; остаётся только реальный host verification 25/28 и финальный release 29, если доступ к runtime физически отсутствует.
-- `HOST VERIFIED` — закрыты 25 и 28.
-- `RELEASE READY` — закрыт 29.
+23. ✅ Clean Linux fresh-install flow generated as `ops/install.sh`, plus `ops/preflight.sh` and `ops/start.sh`.
+24. ✅ `.env.production.example` with explicit production placeholders and startup validation.
+25. 🔴 **HOST REQUIRED** — boot the generated package with an official Linux RAGE MP runtime on the target host.
+26. ✅ Production DB migration procedure: bundled migration runner executes all migrations before server start; restart/recovery tests run in CI.
+27. ✅ Final RAGE MP package structure: `packages/`, `client_packages/`, CEF build, migrations, configs, ops scripts and SHA-256 release manifest.
+28. 🔴 **HOST REQUIRED** — live smoke flow after deployment: registration → character → world → vehicle → store → bank → reconnect → server restart/reconnect.
+29. 🟡 Final archive/artifact is generated by CI after all repository-side gates pass. Promote the artifact to the final Release only after items 25 and 28 are verified on the real host.
+
+## CI gate
+
+A repository-side candidate is `HOST TEST READY` only when all of the following are green on the same commit:
+
+`npm audit` → migrations → schema regression → anti-abuse → restart/reconnect → multiplayer concurrency → TypeScript → build → smoke → E2E → host package → host verify → artifact upload.
+
+The generated host package includes `RELEASE_MANIFEST.json`; `host:verify` validates every manifest path, file size and SHA-256 checksum.
+
+## Status meanings
+
+- `IN DEVELOPMENT` — one or more repository-side items 1–24/26–27 are incomplete.
+- `HOST TEST READY` — all repository-side gates are green; only real-runtime items 25/28 remain.
+- `HOST VERIFIED` — real Linux RAGE MP boot and live smoke (25/28) passed.
+- `RELEASE READY` — final archive/release promoted after host verification (29).
