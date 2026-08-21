@@ -19,6 +19,7 @@ SELECT f.id,r.rank_index,r.name,r.permissions FROM criminal_factions f JOIN (
 
   if (file === '0021_organization_assets.sql') {
     sql = sql.replace(/ALTER TABLE inventories DROP CONSTRAINT IF EXISTS inventories_owner_type_valid;[\s\S]*?CHECK \(owner_type IN \([^;]+?\)\);/i, '');
+    sql = sql.replace(/UNIQUE\(organization_id,key,gender\)/i, 'UNIQUE(organization_id,`key`,gender)');
     sql = sql.replace(/INSERT(?: IGNORE)? INTO organization_vehicles[\s\S]*?;/i,
 `INSERT IGNORE INTO organization_vehicles(organization_id,model,name,plate,min_rank,position_x,position_y,position_z,heading)
 SELECT o.id,v.model,v.name,v.plate,v.min_rank,v.x,v.y,v.z,v.h FROM organizations o JOIN (
