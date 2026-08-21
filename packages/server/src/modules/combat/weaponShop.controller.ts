@@ -1,0 +1,10 @@
+import { ErrorCode,RpcEvent,SessionState,err,ok,type CharacterWeaponView,type WeaponPurchaseRequest,type WeaponPurchaseResult,type WeaponShopProductView,type WeaponShopView } from '@eclipse/shared';
+import { consume } from '../../core/rateLimit';import { onRpc } from '../../core/rpc';import * as service from './weaponShop.service';
+const cid=(ctx:any):number|null=>ctx.session.state===SessionState.Playing&&ctx.session.characterId!==null?ctx.session.characterId:null;
+const map=(e:unknown)=>{const c=e instanceof Error?e.message:'';if(c==='INSUFFICIENT_FUNDS')return err(ErrorCode.InsufficientFunds);if(c==='CHARACTER_NOT_FOUND')return err(ErrorCode.CharacterNotFound);if(['WEAPON_PRODUCT_NOT_FOUND','WEAPON_TOO_FAR','WEAPON_LEVEL_REQUIRED','WEAPON_LICENSE_REQUIRED','WEAPON_ALREADY_OWNED','WEAPON_NOT_OWNED','WEAPON_AMMO_FULL','WEAPON_PRODUCT_INVALID','ARMOUR_FULL'].includes(c))return err(ErrorCode.Validation,{reason:c.toLowerCase()});throw e;};
+export const registerWeaponShopModule=():void=>{const read={max:60,windowMs:60000},write={max:10,windowMs:60000};
+ onRpc<unknown,WeaponShopView[]>(RpcEvent.WeaponShops,async ctx=>{const l=consume(ctx.session,'weapon:shops',read);if(l)return l;if(cid(ctx)===null)return err(ErrorCode.Unauthorized);return ok(await service.listShops());});
+ onRpc<unknown,WeaponShopProductView[]>(RpcEvent.WeaponShopProducts,async ctx=>{const l=consume(ctx.session,'weapon:products',read);if(l)return l;if(cid(ctx)===null)return err(ErrorCode.Unauthorized);return ok(await service.listProducts());});
+ onRpc<unknown,CharacterWeaponView[]>(RpcEvent.CharacterWeapons,async ctx=>{const l=consume(ctx.session,'weapon:owned',read);if(l)return l;const c=cid(ctx);if(c===null)return err(ErrorCode.Unauthorized);return ok(await service.ownedWeapons(c));});
+ onRpc<WeaponPurchaseRequest,WeaponPurchaseResult>(RpcEvent.WeaponShopBuy,async(ctx,p)=>{const l=consume(ctx.session,'weapon:buy',write);if(l)return l;const c=cid(ctx);if(c===null)return err(ErrorCode.Unauthorized);if(!p||typeof p.productId!=='string')return err(ErrorCode.Validation);try{return ok(await service.buyProduct(c,ctx.player,p.productId));}catch(e){return map(e);}});
+};
