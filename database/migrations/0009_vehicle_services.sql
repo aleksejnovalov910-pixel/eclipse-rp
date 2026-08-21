@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS vehicle_access (
-  vehicle_id UUID NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+  vehicle_id BIGINT NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
   character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
   granted_by_character_id INTEGER REFERENCES characters(id) ON DELETE SET NULL,
   access_level VARCHAR(16) NOT NULL DEFAULT 'driver' CHECK (access_level IN ('driver','manager')),
