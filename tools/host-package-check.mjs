@@ -1,0 +1,9 @@
+import assert from 'node:assert/strict';
+import { existsSync,readFileSync,readdirSync,statSync } from 'node:fs';
+const root='release/host-test';const must=['packages/eclipse/index.js','client_packages/index.js','client_packages/eclipse/cef/index.html','database/migrations','ops/migrate.cjs','ops/start.sh','.env.example','conf.json.example','HOST_TEST_READY.txt'];for(const p of must)assert.ok(existsSync(`${root}/${p}`),`host package missing ${p}`);
+assert.ok(statSync(`${root}/packages/eclipse/index.js`).size>1000,'server bundle looks empty');assert.ok(statSync(`${root}/client_packages/index.js`).size>1000,'client bundle looks empty');assert.ok(statSync(`${root}/client_packages/eclipse/cef/index.html`).size>500,'CEF index looks empty');assert.ok(statSync(`${root}/ops/migrate.cjs`).size>10000,'bundled migration runner looks empty');
+const migrations=readdirSync(`${root}/database/migrations`).filter(x=>x.endsWith('.sql'));assert.ok(migrations.length>=18,`expected >=18 migrations, got ${migrations.length}`);
+const env=readFileSync(`${root}/.env.example`,'utf8');for(const key of ['NODE_ENV=production','DB_NAME=','DB_USER=','DB_PASSWORD=','AUTOSAVE_SECONDS='])assert.ok(env.includes(key),`.env.example missing ${key}`);assert.ok(!env.includes('eclipse_ci'),'.env.example contains CI credentials');
+const conf=JSON.parse(readFileSync(`${root}/conf.json.example`,'utf8'));assert.equal(conf.maxplayers,500,'RAGE MP host maxplayers must be 500');assert.equal(conf.bind,'0.0.0.0','host must bind publicly by default');
+const start=readFileSync(`${root}/ops/start.sh`,'utf8');assert.ok(start.includes('migrate.cjs'),'launcher must migrate before start');assert.ok(start.includes('RAGEMP_BIN'),'launcher must support configurable RAGE MP binary');
+console.log(`[host-package] OK: ${migrations.length} migrations, runtime layout and production templates verified`);
