@@ -1,8 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import pg from 'pg';
-const here=dirname(fileURLToPath(import.meta.url));const dir=join(here,'..','database','migrations');
+const dir=join(process.cwd(),'database','migrations');
 const req=k=>{const v=process.env[k];if(!v)throw new Error(`[migrate] missing ${k}`);return v;};
 const client=new pg.Client({host:process.env.DB_HOST??'127.0.0.1',port:Number(process.env.DB_PORT??5432),database:req('DB_NAME'),user:req('DB_USER'),password:req('DB_PASSWORD')});
 await client.connect();await client.query('CREATE TABLE IF NOT EXISTS _migrations(name TEXT PRIMARY KEY,applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');const rows=(await client.query('SELECT name FROM _migrations')).rows;const applied=new Set(rows.map(r=>r.name));
