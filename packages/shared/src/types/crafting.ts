@@ -1,0 +1,9 @@
+export type CraftingStationKind='workbench'|'medical'|'kitchen'|'electronics';
+export interface CraftingPoint{x:number;y:number;z:number;}
+export interface CraftingStationView{id:string;key:string;kind:CraftingStationKind;name:string;position:CraftingPoint;radius:number;}
+export interface CraftingIngredientView{itemKey:string;name:string;quantity:number;}
+export interface CraftingRecipeView{key:string;stationKind:CraftingStationKind;name:string;outputItemKey:string;outputName:string;outputQuantity:number;durationSeconds:number;levelRequired:number;ingredients:CraftingIngredientView[];}
+export interface CraftingOrderView{id:string;stationId:string;recipeKey:string;recipeName:string;batches:number;outputName:string;outputQuantity:number;readyAt:string;createdAt:string;status:'queued'|'claimed'|'cancelled';ready:boolean;}
+export interface CraftingStartRequest{stationId:string;recipeKey:string;batches:number;}
+export interface CraftingCollectRequest{orderId:string;}
+export interface CraftingCollectResult{order:CraftingOrderView;inventoryUpdated:true;}
