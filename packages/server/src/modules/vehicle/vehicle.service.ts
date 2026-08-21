@@ -180,3 +180,10 @@ export const storeVehiclesForPlayer = async (playerId: number): Promise<void> =>
     }
   }
 };
+
+export const getSpawnedOwnedVehicleEntity = (characterId: number, vehicleId: string): VehicleMp | null => {
+  cleanupStale(vehicleId);
+  const entry = spawned.get(vehicleId);
+  if (!entry || entry.ownerCharacterId !== characterId || !mp.vehicles.exists(entry.entity)) return null;
+  return entry.entity;
+};
