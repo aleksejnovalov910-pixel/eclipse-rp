@@ -1,0 +1,10 @@
+{
+  "announce": false,
+  "bind": "0.0.0.0",
+  "gamemode": "roleplay",
+  "language": "ru",
+  "maxplayers": 500,
+  "name": "ECLIPSE RP",
+  "port": 22005,
+  "stream-distance": 500.0
+}
