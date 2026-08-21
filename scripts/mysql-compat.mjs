@@ -23,10 +23,13 @@ export const mysqlize = (source, file = '') => {
   sql = sql.replace(/EXCLUDED\.([a-zA-Z_][a-zA-Z0-9_]*)/g, 'VALUES($1)');
   sql = sql.replace(/INSERT\s+INTO([\s\S]*?)ON\s+CONFLICT(?:\s*\([^)]*\))?\s+DO\s+NOTHING\s*;/gi, 'INSERT IGNORE INTO$1;');
 
-  // MySQL reserved identifiers used by the existing portable Kysely schema.
+  // MySQL reserved identifier `key`.
   sql = sql.replace(/(^|\n)(\s*)key(\s+VARCHAR\s*\([^\n]+)/gi, '$1$2`key`$3');
-  sql = sql.replace(/item_definitions\s*\(\s*key\s*\)/gi, 'item_definitions(`key`)');
-  sql = sql.replace(/item_definitions\s*\(\s*key\s*,/gi, 'item_definitions (`key`,');
+  sql = sql.replace(/\(\s*key\s*([,)])/gi, '(`key`$1');
+
+  // UNIQUE(col) already permits many NULLs in MySQL, so PostgreSQL's
+  // WHERE col IS NOT NULL partial form can be reduced safely.
+  sql = sql.replace(/(CREATE\s+UNIQUE\s+INDEX\s+[^;\n]+(?:\n\s*)?ON\s+[^;]+?\([^;]+?\))\s+WHERE\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+IS\s+NOT\s+NULL\s*;/gi, '$1;');
 
   if (file === '0001_init.sql') {
     sql = sql.replace(/CREATE UNIQUE INDEX characters_account_slot_key[\s\S]*?WHERE deleted_at IS NULL;/i,
