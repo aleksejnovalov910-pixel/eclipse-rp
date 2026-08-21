@@ -7,5 +7,7 @@ export const registerVehicleModule = (): void => {
     RpcEvent.VehicleSpawn,
     RpcEvent.VehicleStore,
     RpcEvent.VehicleToggleLock,
+    RpcEvent.FuelStations,
+    RpcEvent.VehicleRefuel,
   );
 };
