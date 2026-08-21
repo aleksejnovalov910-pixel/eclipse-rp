@@ -1,0 +1,12 @@
+import { ErrorCode,RpcEvent,ServerEvent,SessionState,err,ok,type ClothingBuyRequest,type ClothingCatalogItem,type ClothingEquipRequest,type CustomizationShopView,type OutfitView } from '@eclipse/shared';
+import { consume } from '../../core/rateLimit';import { onRpc } from '../../core/rpc';import * as service from './customization.service';
+const cid=(ctx:any)=>ctx.session.state===SessionState.Playing&&ctx.session.characterId!==null?ctx.session.characterId:null;
+const map=(e:unknown)=>{const c=e instanceof Error?e.message:'';switch(c){case'INSUFFICIENT_FUNDS':return err(ErrorCode.InsufficientFunds);case'ITEM_NOT_FOUND':case'WRONG_GENDER':case'TOO_FAR':case'NOT_OWNED':return err(ErrorCode.Validation,{reason:c.toLowerCase()});default:throw e;}};
+const push=(player:PlayerMp,outfit:OutfitView)=>player.call(ServerEvent.OutfitState,[JSON.stringify(outfit.components)]);
+export const registerCustomizationModule=():void=>{const read={max:50,windowMs:60000},write={max:20,windowMs:60000};
+ onRpc<unknown,CustomizationShopView[]>(RpcEvent.CustomizationShops,async ctx=>{const l=consume(ctx.session,'custom:shops',read);if(l)return l;if(cid(ctx)===null)return err(ErrorCode.Unauthorized);return ok(await service.shops());});
+ onRpc<unknown,ClothingCatalogItem[]>(RpcEvent.ClothingCatalog,async ctx=>{const l=consume(ctx.session,'clothing:catalog',read);if(l)return l;const id=cid(ctx);if(id===null)return err(ErrorCode.Unauthorized);return ok(await service.catalog(id));});
+ onRpc<unknown,OutfitView>(RpcEvent.ClothingCurrent,async ctx=>{const id=cid(ctx);if(id===null)return err(ErrorCode.Unauthorized);return ok(await service.currentOutfit(id));});
+ onRpc<ClothingBuyRequest,OutfitView>(RpcEvent.ClothingBuy,async(ctx,p)=>{const l=consume(ctx.session,'clothing:buy',write);if(l)return l;const id=cid(ctx);if(id===null)return err(ErrorCode.Unauthorized);if(typeof p?.itemKey!=='string')return err(ErrorCode.Validation);try{const out=await service.buy(id,ctx.player,p.itemKey);push(ctx.player,out);return ok(out);}catch(e){return map(e);}});
+ onRpc<ClothingEquipRequest,OutfitView>(RpcEvent.ClothingEquip,async(ctx,p)=>{const l=consume(ctx.session,'clothing:equip',write);if(l)return l;const id=cid(ctx);if(id===null)return err(ErrorCode.Unauthorized);if(typeof p?.itemKey!=='string')return err(ErrorCode.Validation);try{const out=await service.equip(id,p.itemKey);push(ctx.player,out);return ok(out);}catch(e){return map(e);}});
+};
