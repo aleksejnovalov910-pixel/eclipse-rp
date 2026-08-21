@@ -1,119 +1,18 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import {
-  RpcEvent,
-  type PropertyOwnedView,
-  type PropertyPurchaseResult,
-  type PropertySaleResult,
-  type PropertyView,
-} from '@eclipse/shared';
+import { RpcEvent,type InventoryView,type PropertyGarageView,type PropertyOwnedView,type PropertyPurchaseResult,type PropertySaleResult,type PropertyView } from '@eclipse/shared';
 import { rpc } from '../core/rpc';
-
-type Mode = 'owned' | 'catalog';
-const mode = ref<Mode>('owned');
-const owned = ref<PropertyOwnedView[]>([]);
-const catalog = ref<PropertyView[]>([]);
-const busy = ref(false);
-const error = ref('');
-const notice = ref('');
-
-const load = async (): Promise<void> => {
-  error.value = '';
-  const [ownedResult, catalogResult] = await Promise.all([
-    rpc<PropertyOwnedView[]>(RpcEvent.PropertyOwned),
-    rpc<PropertyView[]>(RpcEvent.PropertyCatalog),
-  ]);
-  if (ownedResult.ok) owned.value = ownedResult.data;
-  if (catalogResult.ok) catalog.value = catalogResult.data;
-};
-
-const action = async <T>(event: string, propertyId: string, success: string): Promise<T | null> => {
-  if (busy.value) return null;
-  busy.value = true;
-  error.value = '';
-  notice.value = '';
-  try {
-    const result = await rpc<T>(event, { propertyId });
-    if (!result.ok) {
-      error.value = result.code;
-      return null;
-    }
-    notice.value = success;
-    return result.data;
-  } finally {
-    busy.value = false;
-  }
-};
-
-const buy = async (propertyId: string): Promise<void> => {
-  const result = await action<PropertyPurchaseResult>(RpcEvent.PropertyBuy, propertyId, 'Недвижимость приобретена');
-  if (result) await load();
-};
-
-const sell = async (propertyId: string): Promise<void> => {
-  const result = await action<PropertySaleResult>(RpcEvent.PropertySell, propertyId, 'Объект продан государству за 70% стоимости');
-  if (result) await load();
-};
-
-const enter = async (propertyId: string): Promise<void> => {
-  await action<{ entered: true }>(RpcEvent.PropertyEnter, propertyId, 'Вы вошли в помещение');
-};
-
-const exit = async (propertyId: string): Promise<void> => {
-  await action<{ exited: true }>(RpcEvent.PropertyExit, propertyId, 'Вы вышли из помещения');
-};
-
-const money = (value: string): string => Number(value).toLocaleString('ru-RU', { maximumFractionDigits: 2 });
-const coords = (p: { x: number; y: number }): string => `${p.x.toFixed(1)}, ${p.y.toFixed(1)}`;
-onMounted(() => void load());
+type Mode='owned'|'catalog';const mode=ref<Mode>('owned'),owned=ref<PropertyOwnedView[]>([]),catalog=ref<PropertyView[]>([]),busy=ref(false),error=ref(''),notice=ref(''),selected=ref<string|null>(null);const rentPrice=ref('1000'),rentDays=ref('1'),taxDays=ref('7'),itemId=ref(''),itemQty=ref('1'),vehicleId=ref('');const storage=ref<InventoryView|null>(null),garage=ref<PropertyGarageView|null>(null);
+const load=async()=>{error.value='';const[a,b]=await Promise.all([rpc<PropertyOwnedView[]>(RpcEvent.PropertyOwned),rpc<PropertyView[]>(RpcEvent.PropertyCatalog)]);if(a.ok)owned.value=a.data;if(b.ok)catalog.value=b.data;};
+const call=async<T>(event:string,payload:unknown,success='')=>{if(busy.value)return null;busy.value=true;error.value='';notice.value='';try{const r=await rpc<T>(event,payload);if(!r.ok){error.value=r.code;return null;}if(success)notice.value=success;return r.data;}finally{busy.value=false;}};
+const buy=async(id:string)=>{if(await call<PropertyPurchaseResult>(RpcEvent.PropertyBuy,{propertyId:id},'Недвижимость приобретена'))await load();};const sell=async(id:string)=>{if(await call<PropertySaleResult>(RpcEvent.PropertySell,{propertyId:id},'Объект продан государству'))await load();};const enter=(id:string)=>call(RpcEvent.PropertyEnter,{propertyId:id},'Вы вошли в помещение');const exit=(id:string)=>call(RpcEvent.PropertyExit,{propertyId:id},'Вы вышли из помещения');
+const openManage=async(id:string)=>{selected.value=selected.value===id?null:id;if(!selected.value)return;const[s,g]=await Promise.all([rpc<InventoryView>(RpcEvent.PropertyStorage,{propertyId:id}),rpc<PropertyGarageView>(RpcEvent.PropertyGarage,{propertyId:id})]);storage.value=s.ok?s.data:null;garage.value=g.ok?g.data:null;};
+const setRent=async(id:string,enabled:boolean)=>{if(await call<PropertyOwnedView>(RpcEvent.PropertyRentConfig,{propertyId:id,enabled,price:rentPrice.value},enabled?'Аренда включена':'Аренда отключена'))await load();};const rent=async(id:string)=>{if(await call<PropertyOwnedView>(RpcEvent.PropertyRent,{propertyId:id,days:Number(rentDays.value)},'Аренда оплачена'))await load();};const payTax=async(id:string)=>{if(await call<PropertyOwnedView>(RpcEvent.PropertyTaxPay,{propertyId:id,days:Number(taxDays.value)},'Налог оплачен'))await load();};
+const moveItem=async(id:string,direction:'deposit'|'withdraw')=>{const r=await call<InventoryView>(RpcEvent.PropertyStorageTransfer,{propertyId:id,itemId:itemId.value,quantity:Number(itemQty.value),direction},'Склад обновлён');if(r)storage.value=r;};const garageAction=async(id:string,kind:'store'|'release')=>{const ev=kind==='store'?RpcEvent.PropertyGarageStore:RpcEvent.PropertyGarageRelease;const r=await call<PropertyGarageView>(ev,{propertyId:id,vehicleId:vehicleId.value},kind==='store'?'Машина помещена в гараж':'Машина выдана из гаража');if(r)garage.value=r;};
+const money=(v:string|null|undefined)=>Number(v??0).toLocaleString('ru-RU',{maximumFractionDigits:2});const date=(v:string|null|undefined)=>v?new Date(v).toLocaleString('ru-RU'):'не оплачено';onMounted(()=>void load());
 </script>
-
-<template>
-  <section class="property-panel">
-    <div class="toolbar">
-      <div class="tabs">
-        <button :class="{active:mode==='owned'}" @click="mode='owned'">Моя недвижимость</button>
-        <button :class="{active:mode==='catalog'}" @click="mode='catalog'">Каталог</button>
-      </div>
-      <button :disabled="busy" @click="load">Обновить</button>
-    </div>
-
-    <p v-if="error" class="message error">{{ error }}</p>
-    <p v-if="notice" class="message success">{{ notice }}</p>
-
-    <div v-if="mode==='owned'" class="grid">
-      <article v-for="item in owned" :key="item.id" class="property">
-        <div class="property-head">
-          <div><small>{{ item.kind === 'house' ? 'ДОМ' : 'АПАРТАМЕНТЫ' }}</small><h3>{{ item.name }}</h3></div>
-          <strong>${{ money(item.price) }}</strong>
-        </div>
-        <p>Вход: {{ coords(item.exterior) }} · Dimension {{ item.exterior.dimension }}</p>
-        <div class="actions">
-          <button :disabled="busy" @click="enter(item.id)">Войти рядом с дверью</button>
-          <button :disabled="busy" @click="exit(item.id)">Выйти из интерьера</button>
-          <button class="danger" :disabled="busy" @click="sell(item.id)">Продать государству</button>
-        </div>
-      </article>
-      <p v-if="!owned.length" class="empty">У вас пока нет недвижимости.</p>
-    </div>
-
-    <div v-else class="grid">
-      <article v-for="item in catalog" :key="item.id" class="property" :class="{unavailable:item.owned&&!item.ownedByMe}">
-        <div class="property-head">
-          <div><small>{{ item.kind === 'house' ? 'ДОМ' : 'АПАРТАМЕНТЫ' }}</small><h3>{{ item.name }}</h3></div>
-          <strong>${{ money(item.price) }}</strong>
-        </div>
-        <p>Координаты: {{ coords(item.exterior) }}</p>
-        <div class="property-status">
-          <span v-if="item.ownedByMe">Уже принадлежит вам</span>
-          <span v-else-if="item.owned">Объект занят</span>
-          <button v-else :disabled="busy" @click="buy(item.id)">Купить с банковского счёта</button>
-        </div>
-      </article>
-    </div>
-  </section>
-</template>
-
-<style scoped>
-.property-panel{display:grid;gap:14px}.toolbar{display:flex;justify-content:space-between;gap:12px}.tabs{display:flex;gap:7px}button{border:1px solid var(--e-border);border-radius:10px;background:var(--e-surface-2);color:var(--e-text-primary);padding:10px 14px;cursor:pointer}button.active{border-color:var(--e-accent);background:var(--e-accent-soft)}button:disabled{opacity:.45;cursor:not-allowed}.message{padding:10px 12px;border-radius:10px;margin:0}.error{background:rgba(255,80,80,.1);color:#ff8585}.success{background:rgba(80,200,120,.1);color:#7dde9f}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.property{padding:17px;border:1px solid var(--e-border);border-radius:14px;background:var(--e-surface-1)}.property.unavailable{opacity:.62}.property-head{display:flex;justify-content:space-between;gap:16px}.property-head small{color:var(--e-accent);letter-spacing:.12em}.property-head h3{margin:4px 0}.property-head>strong{font-size:18px}.property p{color:var(--e-text-muted);font-size:12px}.actions{display:flex;flex-wrap:wrap;gap:7px}.actions .danger{color:#ff8585}.property-status{min-height:40px;display:flex;align-items:center}.property-status span{color:var(--e-text-muted)}.empty{grid-column:1/-1;text-align:center;color:var(--e-text-muted);padding:30px}
-</style>
+<template><section class="panel"><div class="toolbar"><div><button :class="{active:mode==='owned'}" @click="mode='owned'">Мои объекты</button><button :class="{active:mode==='catalog'}" @click="mode='catalog'">Каталог</button></div><button @click="load">Обновить</button></div><p v-if="error" class="err">{{error}}</p><p v-if="notice" class="ok">{{notice}}</p>
+<div v-if="mode==='owned'" class="grid"><article v-for="p in owned" :key="p.id"><header><div><small>{{p.ownedByMe?'СОБСТВЕННОСТЬ':'АРЕНДА'}}</small><h3>{{p.name}}</h3></div><b>${{money(p.price)}}</b></header><p>Вход: {{p.exterior.x.toFixed(1)}}, {{p.exterior.y.toFixed(1)}} · гараж {{p.garageSlots??0}} мест</p><p v-if="p.ownedByMe">Налог оплачен до: {{date(p.taxPaidUntil)}}<br>Арендатор: {{p.tenantCharacterId??'нет'}} <span v-if="p.rentPaidUntil">до {{date(p.rentPaidUntil)}}</span></p><p v-else>Аренда до: {{date(p.rentPaidUntil)}}</p><div class="actions"><button @click="enter(p.id)">Войти</button><button @click="exit(p.id)">Выйти</button><button @click="openManage(p.id)">Управление</button><button v-if="p.ownedByMe" class="danger" @click="sell(p.id)">Продать</button></div>
+<div v-if="selected===p.id" class="manage"><template v-if="p.ownedByMe"><h4>Налоги и аренда</h4><div class="row"><input v-model="taxDays" type="number" min="1" max="30"><button @click="payTax(p.id)">Оплатить налог, дней</button></div><div class="row"><input v-model="rentPrice" placeholder="Цена в день"><button @click="setRent(p.id,true)">Включить аренду</button><button @click="setRent(p.id,false)">Отключить</button></div></template><h4>Хранилище</h4><p v-if="storage">Вес {{storage.usedWeight}} / {{storage.capacityWeight}}, предметов {{storage.items.length}}</p><div v-if="storage" class="items"><span v-for="x in storage.items" :key="x.id">#{{x.id}} {{x.name}} ×{{x.quantity}}</span></div><div class="row"><input v-model="itemId" placeholder="ID предмета"><input v-model="itemQty" type="number" min="1"><button @click="moveItem(p.id,'deposit')">Положить</button><button @click="moveItem(p.id,'withdraw')">Забрать</button></div><h4>Гараж</h4><p v-if="garage">{{garage.vehicleIds.length}} / {{garage.slots}} · {{garage.vehicleIds.join(', ')||'пусто'}}</p><div class="row"><input v-model="vehicleId" placeholder="ID транспорта"><button @click="garageAction(p.id,'store')">Поставить</button><button @click="garageAction(p.id,'release')">Выдать</button></div></div></article><p v-if="!owned.length" class="empty">Нет собственности или активной аренды.</p></div>
+<div v-else class="grid"><article v-for="p in catalog" :key="p.id"><header><div><small>{{p.kind==='house'?'ДОМ':'АПАРТАМЕНТЫ'}}</small><h3>{{p.name}}</h3></div><b>${{money(p.price)}}</b></header><p>{{p.exterior.x.toFixed(1)}}, {{p.exterior.y.toFixed(1)}}</p><div v-if="!p.owned"><button @click="buy(p.id)">Купить</button></div><div v-else-if="p.ownedByMe">Уже принадлежит вам</div><div v-else-if="p.rentEnabled&&p.rentPrice" class="row"><span>Аренда ${{money(p.rentPrice)}}/день</span><input v-model="rentDays" type="number" min="1" max="30"><button @click="rent(p.id)">Арендовать</button></div><div v-else>Объект занят</div></article></div></section></template>
+<style scoped>.panel{display:grid;gap:12px}.toolbar,.toolbar>div,.actions,.row{display:flex;gap:7px;align-items:center}.toolbar{justify-content:space-between}button,input{border:1px solid var(--e-border);border-radius:9px;background:var(--e-surface-2);color:var(--e-text-primary);padding:9px 11px}button{cursor:pointer}button.active{border-color:var(--e-accent)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}article{padding:15px;border:1px solid var(--e-border);border-radius:13px;background:var(--e-surface-1)}header{display:flex;justify-content:space-between}h3{margin:3px 0}small{color:var(--e-accent)}p{font-size:12px;color:var(--e-text-muted)}.manage{margin-top:12px;padding-top:10px;border-top:1px solid var(--e-border);display:grid;gap:7px}.manage h4{margin:4px 0}.row{flex-wrap:wrap}.row input{max-width:130px}.items{max-height:90px;overflow:auto;display:grid;gap:3px;font-size:11px;color:var(--e-text-muted)}.danger,.err{color:#ff8585}.ok{color:#7dde9f}.empty{grid-column:1/-1;text-align:center}</style>
