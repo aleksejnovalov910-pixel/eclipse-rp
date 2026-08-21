@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS organization_uniforms (
 );
 
 INSERT INTO inventories(owner_type,owner_id,capacity_weight,slots)
-SELECT 'organization',o.id::text,500.000,80 FROM organizations o
+SELECT 'organization',o.id,500.000,80 FROM organizations o
 ON CONFLICT (owner_type,owner_id) DO NOTHING;
 
 INSERT INTO organization_vehicles(organization_id,model,name,plate,min_rank,position_x,position_y,position_z,heading)
