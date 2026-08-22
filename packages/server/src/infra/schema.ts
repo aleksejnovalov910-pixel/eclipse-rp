@@ -1,85 +1,42 @@
 import type { Generated, ColumnType } from 'kysely';
-
-/**
- * Типизированная схема базы данных для Kysely.
- *
- * Важно: этот файл — зеркало SQL-миграций в `database/migrations`.
- * Схема НЕ генерируется автоматически и НЕ применяется автоматически:
- * источник правды — миграции, а этот файл описывает их результат для
- * компилятора. При добавлении миграции обновите оба места.
- */
-
-/**
- * ВАЖНО: `Generated<Timestamp>` писать нельзя — это вложит ColumnType в
- * ColumnType, и Kysely перестанет разворачивать тип при SELECT. Значение по
- * умолчанию уже выражено через `| undefined` в insert-типе.
- */
-type Timestamp = ColumnType<Date, Date | string | undefined, Date | string>;
-type TimestampNullable = ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
-
-export interface AccountsTable {
-  id: Generated<number>;
-  login: string;
-  login_lower: string;
-  email: string;
-  /** Хэш пароля в формате `scrypt$N$r$p$salt$hash` (см. modules/account/password.ts). */
-  password_hash: string;
-  admin_level: Generated<number>;
-  social_club: string | null;
-  last_ip: string | null;
-  last_login_at: TimestampNullable;
-  banned_until: TimestampNullable;
-  ban_reason: string | null;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-}
-
-export interface CharactersTable {
-  id: Generated<number>;
-  account_id: number;
-  slot: number;
-  first_name: string;
-  last_name: string;
-  name_lower: string;
-  gender: string;
-  level: Generated<number>;
-  experience: Generated<number>;
-  played_minutes: Generated<number>;
-  cash: Generated<string>;
-  bank: Generated<string>;
-  health: Generated<number>;
-  armour: Generated<number>;
-  position_x: Generated<string>;
-  position_y: Generated<string>;
-  position_z: Generated<string>;
-  heading: Generated<string>;
-  dimension: Generated<number>;
-  appearance: Generated<unknown>;
-  deleted_at: TimestampNullable;
-  last_played_at: TimestampNullable;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-}
-
-export interface AuthLogTable {
-  id: Generated<number>;
-  account_id: number | null;
-  login_attempted: string;
-  ip: string | null;
-  social_club: string | null;
-  success: boolean;
-  failure_reason: string | null;
-  created_at: Timestamp;
-}
-
-export interface MigrationsTable {
-  name: string;
-  applied_at: Timestamp;
-}
-
-export interface Database {
-  accounts: AccountsTable;
-  characters: CharactersTable;
-  auth_log: AuthLogTable;
-  _migrations: MigrationsTable;
-}
+type Timestamp=ColumnType<Date,Date|string|undefined,Date|string>;type TimestampNullable=ColumnType<Date|null,Date|string|null|undefined,Date|string|null>;type JsonValue=unknown;
+export interface AccountsTable{id:Generated<number>;login:string;login_lower:string;email:string;password_hash:string;admin_level:Generated<number>;social_club:string|null;last_ip:string|null;last_login_at:TimestampNullable;banned_until:TimestampNullable;ban_reason:string|null;created_at:Timestamp;updated_at:Timestamp}
+export interface CharactersTable{id:Generated<number>;account_id:number;slot:number;first_name:string;last_name:string;name_lower:string;gender:string;level:Generated<number>;experience:Generated<number>;played_minutes:Generated<number>;cash:Generated<string>;bank:Generated<string>;health:Generated<number>;armour:Generated<number>;position_x:Generated<string>;position_y:Generated<string>;position_z:Generated<string>;heading:Generated<string>;dimension:Generated<number>;appearance:Generated<JsonValue>;phone_number:string|null;deleted_at:TimestampNullable;last_played_at:TimestampNullable;created_at:Timestamp;updated_at:Timestamp}
+export interface AuthLogTable{id:Generated<number>;account_id:number|null;login_attempted:string;ip:string|null;social_club:string|null;success:boolean;failure_reason:string|null;created_at:Timestamp}
+export interface BankTransactionsTable{id:Generated<string>;character_id:number;counterparty_id:number|null;kind:string;amount:string;balance_after:string;description:string|null;metadata:Generated<JsonValue>;created_at:Timestamp}
+export interface ItemDefinitionsTable{key:string;name:string;category:string;weight:Generated<string>;stack_size:Generated<number>;tradable:Generated<boolean>;droppable:Generated<boolean>;metadata:Generated<JsonValue>}
+export interface InventoriesTable{id:Generated<string>;owner_type:string;owner_id:string;capacity_weight:Generated<string>;slots:Generated<number>;created_at:Timestamp;updated_at:Timestamp}
+export interface InventoryItemsTable{id:Generated<string>;inventory_id:string;item_key:string;slot:number;quantity:Generated<number>;metadata:Generated<JsonValue>;created_at:Timestamp;updated_at:Timestamp}
+export interface VehiclesTable{id:Generated<string>;owner_character_id:number|null;owner_family_id:string|null;model:string;vin:string;plate:string|null;primary_color:Generated<number>;secondary_color:Generated<number>;fuel:Generated<string>;mileage:Generated<string>;engine_health:Generated<string>;body_health:Generated<string>;insurance_until:TimestampNullable;locked:Generated<boolean>;impounded:Generated<boolean>;position_x:string|null;position_y:string|null;position_z:string|null;heading:string|null;dimension:Generated<number>;tuning:Generated<JsonValue>;created_at:Timestamp;updated_at:Timestamp}
+export interface FamiliesTable{id:Generated<string>;name:string;name_lower:string;owner_character_id:number;balance:Generated<string>;reputation:Generated<number>;level:Generated<number>;color:Generated<number>;settings:Generated<JsonValue>;created_at:Timestamp;updated_at:Timestamp}
+export interface FamilyRanksTable{id:Generated<string>;family_id:string;rank_index:number;name:string;permissions:Generated<JsonValue>}
+export interface FamilyMembersTable{family_id:string;character_id:number;rank_id:string;contribution:Generated<number>;joined_at:Timestamp}
+export interface FamilyContractsTable{id:Generated<string>;family_id:string;contract_key:string;progress:Generated<number>;target:number;reward_money:Generated<string>;reward_reputation:Generated<number>;expires_at:Timestamp;completed_at:TimestampNullable;created_at:Timestamp}
+export interface FamilyAuditLogTable{id:Generated<string>;family_id:string;actor_character_id:number|null;target_character_id:number|null;action:string;metadata:Generated<JsonValue>;created_at:Timestamp}
+export interface OrganizationsTable{id:Generated<string>;key:string;name:string;kind:string;color:Generated<number>;settings:Generated<JsonValue>;created_at:Timestamp}
+export interface OrganizationRanksTable{id:Generated<string>;organization_id:string;rank_index:number;name:string;salary:Generated<string>;permissions:Generated<JsonValue>}
+export interface OrganizationMembersTable{organization_id:string;character_id:number;rank_id:string;on_duty:Generated<boolean>;joined_at:Timestamp;updated_at:Timestamp}
+export interface OrganizationCallsTable{id:Generated<string>;organization_kind:string;caller_character_id:number|null;assigned_character_id:number|null;status:Generated<string>;message:string;position_x:string;position_y:string;position_z:string;created_at:Timestamp;updated_at:Timestamp;closed_at:TimestampNullable}
+export interface OrganizationAuditLogTable{id:Generated<string>;organization_id:string|null;actor_character_id:number|null;target_character_id:number|null;action:string;metadata:Generated<JsonValue>;created_at:Timestamp}
+export interface PoliceRecordsTable{id:Generated<string>;target_character_id:number;officer_character_id:number|null;kind:string;reason:string;amount:string|null;wanted_level:number|null;active:Generated<boolean>;metadata:Generated<JsonValue>;created_at:Timestamp;resolved_at:TimestampNullable}
+export interface MedicalRecordsTable{id:Generated<string>;target_character_id:number;medic_character_id:number|null;diagnosis:string;treatment:string;health_before:number;health_after:number;created_at:Timestamp}
+export interface CharacterDocumentsTable{character_id:number;passport_number:string;issued_at:Timestamp;expires_at:TimestampNullable;licenses:Generated<JsonValue>;updated_at:Timestamp}
+export interface CriminalFactionsTable{id:Generated<string>;key:string;name:string;color:Generated<number>;balance:Generated<string>;reputation:Generated<number>;created_at:Timestamp}
+export interface CriminalFactionRanksTable{id:Generated<string>;faction_id:string;rank_index:number;name:string;permissions:Generated<JsonValue>}
+export interface CriminalFactionMembersTable{faction_id:string;character_id:number;rank_id:string;contribution:Generated<number>;joined_at:Timestamp}
+export interface CriminalTerritoriesTable{id:Generated<string>;key:string;name:string;owner_faction_id:string|null;center_x:string;center_y:string;radius:Generated<string>;income:Generated<string>;updated_at:Timestamp}
+export interface CriminalContractsTable{id:Generated<string>;faction_id:string;contract_key:string;title:string;progress:Generated<number>;target:number;reward_money:Generated<string>;reward_reputation:Generated<number>;expires_at:Timestamp;completed_at:TimestampNullable;created_at:Timestamp}
+export interface CustomizationShopsTable{id:Generated<string>;key:string;kind:string;name:string;position_x:string;position_y:string;position_z:string;radius:Generated<string>}
+export interface ClothingCatalogTable{key:string;gender:string;category:string;component_id:number;drawable:number;texture:Generated<number>;name:string;price:string;enabled:Generated<boolean>}
+export interface CharacterClothingOwnedTable{character_id:number;item_key:string;purchased_at:Timestamp}
+export interface CharacterOutfitStateTable{character_id:number;components:Generated<JsonValue>;updated_at:Timestamp}
+export interface JobProgressTable{character_id:number;job_key:string;level:Generated<number>;experience:Generated<number>;completed:Generated<number>;updated_at:Timestamp}
+export interface EconomyLedgerTable{id:Generated<string>;character_id:number|null;family_id:string|null;source:string;direction:string;amount:string;metadata:Generated<JsonValue>;created_at:Timestamp}
+export interface PhoneContactsTable{id:Generated<string>;owner_character_id:number;phone_number:string;display_name:string;created_at:Timestamp;updated_at:Timestamp}
+export interface PhoneMessagesTable{id:Generated<string>;sender_character_id:number;recipient_character_id:number;body:string;read_at:TimestampNullable;created_at:Timestamp}
+export interface PhoneCallsTable{id:Generated<string>;caller_character_id:number;callee_character_id:number;status:string;started_at:Timestamp;answered_at:TimestampNullable;ended_at:Timestamp}
+export interface PhoneClassifiedsTable{id:Generated<string>;author_character_id:number;category:string;title:string;body:string;phone_number:string;price:string|null;expires_at:Timestamp;created_at:Timestamp}
+export interface QuestDefinitionsTable{key:string;title:string;description:string;target:number;reward_cash:Generated<string>;reward_bank:Generated<string>;sort_order:Generated<number>;enabled:Generated<boolean>}
+export interface QuestProgressTable{character_id:number;quest_key:string;progress:Generated<number>;completed_at:TimestampNullable;claimed_at:TimestampNullable;updated_at:Timestamp}
+export interface MigrationsTable{name:string;applied_at:Timestamp}
+export interface Database{accounts:AccountsTable;characters:CharactersTable;auth_log:AuthLogTable;bank_transactions:BankTransactionsTable;item_definitions:ItemDefinitionsTable;inventories:InventoriesTable;inventory_items:InventoryItemsTable;vehicles:VehiclesTable;families:FamiliesTable;family_ranks:FamilyRanksTable;family_members:FamilyMembersTable;family_contracts:FamilyContractsTable;family_audit_log:FamilyAuditLogTable;organizations:OrganizationsTable;organization_ranks:OrganizationRanksTable;organization_members:OrganizationMembersTable;organization_calls:OrganizationCallsTable;organization_audit_log:OrganizationAuditLogTable;police_records:PoliceRecordsTable;medical_records:MedicalRecordsTable;character_documents:CharacterDocumentsTable;criminal_factions:CriminalFactionsTable;criminal_faction_ranks:CriminalFactionRanksTable;criminal_faction_members:CriminalFactionMembersTable;criminal_territories:CriminalTerritoriesTable;criminal_contracts:CriminalContractsTable;customization_shops:CustomizationShopsTable;clothing_catalog:ClothingCatalogTable;character_clothing_owned:CharacterClothingOwnedTable;character_outfit_state:CharacterOutfitStateTable;job_progress:JobProgressTable;economy_ledger:EconomyLedgerTable;phone_contacts:PhoneContactsTable;phone_messages:PhoneMessagesTable;phone_calls:PhoneCallsTable;phone_classifieds:PhoneClassifiedsTable;quest_definitions:QuestDefinitionsTable;quest_progress:QuestProgressTable;_migrations:MigrationsTable}

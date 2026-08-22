@@ -1,0 +1,15 @@
+import { ErrorCode,RpcEvent,SessionState,err,ok,type MarketplaceBidRequest,type MarketplaceBidResult,type MarketplaceCreateRequest,type MarketplaceHistoryView,type MarketplaceListingView,type MarketplacePurchaseResult,type MarketplaceSearchRequest } from '@eclipse/shared';
+import { consume } from '../../core/rateLimit';
+import { onRpc } from '../../core/rpc';
+import * as service from './marketplace.service';
+const cid=(ctx:any):number|null=>ctx.session.state===SessionState.Playing&&ctx.session.characterId!==null?ctx.session.characterId:null;
+const map=(e:unknown)=>{const c=e instanceof Error?e.message:'';if(c==='INSUFFICIENT_FUNDS')return ErrorCode.InsufficientFunds;if(['INVALID_LISTING','INVALID_OBJECT_TYPE','OBJECT_NOT_OWNED','OBJECT_BUSY','ALREADY_LISTED','LISTING_NOT_ACTIVE','SELF_PURCHASE','CHARACTER_NOT_FOUND','INVALID_BID','BID_TOO_LOW','AUCTION_HAS_BIDS','INVENTORY_NOT_FOUND','INVENTORY_FULL','ITEM_NOT_FOUND','ITEM_ESCROW_MISSING'].includes(c))return ErrorCode.Validation;return ErrorCode.Internal;};
+export const registerMarketplaceModule=():void=>{const read={max:80,windowMs:60000},write={max:24,windowMs:60000};
+ onRpc<MarketplaceSearchRequest,MarketplaceListingView[]>(RpcEvent.MarketList,async(ctx,p)=>{const l=consume(ctx.session,'market:list',read);if(l)return l;const c=cid(ctx);if(c===null)return err(ErrorCode.Unauthorized);return ok(await service.listActive(c,p??{}));});
+ onRpc<unknown,MarketplaceListingView[]>(RpcEvent.MarketMine,async ctx=>{const l=consume(ctx.session,'market:mine',read);if(l)return l;const c=cid(ctx);if(c===null)return err(ErrorCode.Unauthorized);return ok(await service.listMine(c));});
+ onRpc<unknown,MarketplaceHistoryView[]>(RpcEvent.MarketHistory,async ctx=>{const l=consume(ctx.session,'market:history',read);if(l)return l;const c=cid(ctx);if(c===null)return err(ErrorCode.Unauthorized);return ok(await service.history(c));});
+ onRpc<MarketplaceCreateRequest,MarketplaceListingView>(RpcEvent.MarketCreate,async(ctx,p)=>{const l=consume(ctx.session,'market:create',write);if(l)return l;const c=cid(ctx);if(c===null)return err(ErrorCode.Unauthorized);try{return ok(await service.createListing(c,p));}catch(e){return err(map(e));}});
+ onRpc<{listingId:string},MarketplaceListingView>(RpcEvent.MarketCancel,async(ctx,p)=>{const l=consume(ctx.session,'market:cancel',write);if(l)return l;const c=cid(ctx);if(c===null)return err(ErrorCode.Unauthorized);try{return ok(await service.cancelListing(c,p?.listingId??''));}catch(e){return err(map(e));}});
+ onRpc<{listingId:string},MarketplacePurchaseResult>(RpcEvent.MarketBuy,async(ctx,p)=>{const l=consume(ctx.session,'market:buy',write);if(l)return l;const c=cid(ctx);if(c===null)return err(ErrorCode.Unauthorized);try{return ok(await service.buyListing(c,p?.listingId??''));}catch(e){return err(map(e));}});
+ onRpc<MarketplaceBidRequest,MarketplaceBidResult>(RpcEvent.MarketBid,async(ctx,p)=>{const l=consume(ctx.session,'market:bid',write);if(l)return l;const c=cid(ctx);if(c===null)return err(ErrorCode.Unauthorized);try{return ok(await service.bid(c,p?.listingId??'',p?.amount??''));}catch(e){return err(map(e));}});
+};

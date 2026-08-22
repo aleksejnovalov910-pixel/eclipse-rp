@@ -1,0 +1,10 @@
+import { ErrorCode,RpcEvent,SessionState,err,ok,type CriminalContractView,type CriminalFactionView,type CriminalSetRankRequest,type CriminalTerritoryView } from '@eclipse/shared';
+import { consume } from '../../core/rateLimit';import { onRpc } from '../../core/rpc';import * as service from './criminal.service';
+const cid=(ctx:any)=>ctx.session.state===SessionState.Playing&&ctx.session.characterId!==null?ctx.session.characterId:null;
+const map=(e:unknown)=>{const c=e instanceof Error?e.message:'';switch(c){case'NOT_IN_FACTION':return err(ErrorCode.Validation,{reason:'not_in_criminal_faction'});case'NO_PERMISSION':return err(ErrorCode.Unauthorized,{reason:'criminal_permission'});case'INVALID_RANK':return err(ErrorCode.Validation,{reason:c.toLowerCase()});default:throw e;}};
+export const registerCriminalModule=():void=>{const read={max:40,windowMs:60000},write={max:20,windowMs:60000};
+ onRpc<unknown,CriminalFactionView|null>(RpcEvent.CriminalGet,async ctx=>{const l=consume(ctx.session,'criminal:get',read);if(l)return l;const id=cid(ctx);if(id===null)return err(ErrorCode.Unauthorized);return ok(await service.getFaction(id));});
+ onRpc<unknown,CriminalTerritoryView[]>(RpcEvent.CriminalTerritories,async ctx=>{const l=consume(ctx.session,'criminal:territories',read);if(l)return l;if(cid(ctx)===null)return err(ErrorCode.Unauthorized);return ok(await service.territories());});
+ onRpc<unknown,CriminalContractView[]>(RpcEvent.CriminalContracts,async ctx=>{const l=consume(ctx.session,'criminal:contracts',read);if(l)return l;const id=cid(ctx);if(id===null)return err(ErrorCode.Unauthorized);return ok(await service.contracts(id));});
+ onRpc<CriminalSetRankRequest,{updated:true}>(RpcEvent.CriminalSetRank,async(ctx,p)=>{const l=consume(ctx.session,'criminal:setRank',write);if(l)return l;const id=cid(ctx);if(id===null)return err(ErrorCode.Unauthorized);if(!Number.isInteger(p?.targetCharacterId)||!Number.isInteger(p?.rankIndex))return err(ErrorCode.Validation);try{await service.setRank(id,p.targetCharacterId,p.rankIndex);return ok({updated:true as const});}catch(e){return map(e);}});
+};

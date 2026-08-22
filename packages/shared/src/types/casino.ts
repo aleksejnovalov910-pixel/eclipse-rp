@@ -1,0 +1,10 @@
+export interface CasinoStateView{chips:number;bank:string;}
+export interface CasinoExchangeRequest{direction:'buy'|'sell';chips:number;}
+export interface CasinoGameRequest{game:'slots'|'roulette'|'dice';bet:number;choice?:number|string;}
+export interface CasinoGameResult{game:'slots'|'roulette'|'dice';bet:number;payout:number;chips:number;result:Record<string,unknown>;}
+export interface CasinoHistoryView{id:string;game:'slots'|'roulette'|'dice';bet:number;payout:number;result:Record<string,unknown>;createdAt:string;}
+export interface ActivityView{key:string;name:string;description:string;kind:'reaction'|'checkpoint'|'delivery';rewardCash:string;cooldownHours:number;position:{x:number;y:number;z:number};available:boolean;nextAt:string|null;completions:number;bestScore:number|null;}
+export interface ActivityStartRequest{key:string;}
+export interface ActivitySessionView{key:string;kind:'reaction'|'checkpoint'|'delivery';startedAt:string;targetAt:string|null;step:number;totalSteps:number;target:{x:number;y:number;z:number}|null;}
+export interface ActivityCompleteRequest{key:string;score?:number;}
+export interface ActivityCompleteResult{rewardCash:string;bank:string;completions:number;bestScore:number|null;}

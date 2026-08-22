@@ -12,21 +12,16 @@ import { createLogger } from '../../core/logger';
 import { PLAYER_MODELS } from '../../config/world';
 import * as service from './character.service';
 import { beginTracking } from './character.state';
-
-/**
- * Транспортный слой модуля персонажей.
- *
- * Здесь же — единственное место, где сервис встречается с сущностями
- * RAGE MP: спавн игрока в мире. Всё, что касается правил и базы, остаётся
- * в сервисе.
- */
+import { advanceQuestSafe } from '../quests/quest.service';
+import { currentOutfit,currentTattoos } from '../customization/customization.service';
+import { custodyState } from '../publicServices/policeActions.service';
+import { hospitalize, state as medicalState } from '../publicServices/medicalEmergency.service';
+import { syncLoadout } from '../combat/weaponShop.service';
 
 const log = createLogger('character:rpc');
 
 export const registerCharacterModule = (): void => {
-  // Чтение списка дёшево, но всё равно бьёт в базу — ограничиваем.
   const listRule = { max: 20, windowMs: 60_000 };
-  // Создание дороже и необратимо: лимит жёстче.
   const createRule = { max: 5, windowMs: 10 * 60 * 1000 };
   const selectRule = { max: 10, windowMs: 60_000 };
   const nameCheckRule = { max: 30, windowMs: 60_000 };
@@ -60,24 +55,29 @@ export const registerCharacterModule = (): void => {
     if (!result.ok) return result;
 
     spawn(ctx.player, result.data);
-    // Отсчёт наигранного времени начинается только после успешного спавна.
     beginTracking(ctx.session);
+    ctx.player.call(ServerEvent.CharacterAppearance, [JSON.stringify(result.data.appearance)]);
+    const [outfit,tattoos,custody,medicalRaw]=await Promise.all([currentOutfit(result.data.characterId),currentTattoos(result.data.characterId),custodyState(result.data.characterId),medicalState(result.data.characterId)]);
+    ctx.player.call(ServerEvent.OutfitState, [JSON.stringify(outfit.components)]);
+    ctx.player.call(ServerEvent.TattooState, [JSON.stringify(tattoos)]);
+    const jailed=custody.jailedUntil!==null&&new Date(custody.jailedUntil).getTime()>Date.now();
+    if(jailed){ctx.player.position=new mp.Vector3(1690.8,2591.3,45.9);ctx.player.dimension=0;}
+    ctx.player.call(ServerEvent.PoliceCustodyState,[JSON.stringify(custody)]);
+    let medical=medicalRaw;
+    const bleedoutExpired=medical.downed&&medical.bleedoutAt!==null&&new Date(medical.bleedoutAt).getTime()<=Date.now();
+    if(bleedoutExpired)medical=await hospitalize(result.data.characterId);
+    const hospitalized=medical.hospitalizedUntil!==null&&new Date(medical.hospitalizedUntil).getTime()>Date.now();
+    if(medical.downed){ctx.player.health=20;}else if(hospitalized){ctx.player.position=new mp.Vector3(307.3,-595.3,43.3);ctx.player.dimension=0;ctx.player.health=100;ctx.player.armour=0;}
+    ctx.player.call(ServerEvent.MedicalState,[JSON.stringify(medical)]);
+    if(jailed||medical.downed||hospitalized)ctx.player.call(ServerEvent.WeaponLoadout,[JSON.stringify([])]);else await syncLoadout(result.data.characterId,ctx.player);
     ctx.player.call(ServerEvent.SessionState, [SessionState.Playing]);
-
+    await advanceQuestSafe(result.data.characterId, 'welcome');
     return { ok: true, data: { characterId: result.data.characterId } };
   });
 };
 
-/**
- * Помещение персонажа в мир.
- *
- * Порядок вызовов важен: модель задаётся до позиции, иначе игрок на кадр
- * появляется стандартным Франклином в неправильной точке. Здоровье
- * выставляется после спавна — spawn() сбрасывает его на максимум.
- */
 const spawn = (player: PlayerMp, data: service.SpawnData): void => {
   if (!mp.players.exists(player)) return;
-
   try {
     player.name = data.name;
     player.model = mp.joaat(PLAYER_MODELS[data.gender]);
@@ -87,7 +87,6 @@ const spawn = (player: PlayerMp, data: service.SpawnData): void => {
     player.health = data.health;
     player.armour = data.armour;
   } catch (error) {
-    // Сбой спавна не должен оставить игрока в подвешенном состоянии молча.
     log.error(`не удалось разместить персонажа id=${data.characterId} в мире`, error);
   }
 };

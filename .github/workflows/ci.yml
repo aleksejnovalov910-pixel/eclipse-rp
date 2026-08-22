@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: eclipse_rp
+          MYSQL_USER: eclipse
+          MYSQL_PASSWORD: eclipse_ci
+          MYSQL_ROOT_PASSWORD: root_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ueclipse -peclipse_ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      NODE_ENV: test
+      ECLIPSE_SERVER_NAME: ECLIPSE RP CI
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_NAME: eclipse_rp
+      DB_USER: eclipse
+      DB_PASSWORD: eclipse_ci
+      DB_POOL_MAX: 10
+      REDIS_ENABLED: "false"
+      LOG_LEVEL: warn
+      AUTH_MAX_ATTEMPTS: 5
+      AUTH_LOCKOUT_SECONDS: 300
+      AUTOSAVE_SECONDS: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install --package-lock-only
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run migrate
+      - run: npm run test:schema
+      - run: npm run test:anti-abuse
+      - run: npm run test:restart
+      - run: npm run test:concurrency
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run test:smoke
+      - run: npm run test:e2e
+      - run: npm run host:package
+      - run: npm run host:verify
+      - name: Pack HOST TEST READY artifact
+        run: tar -czf release/eclipse-rp-host-test.tar.gz -C release/host-test .
+      - name: Upload HOST TEST READY artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eclipse-rp-host-test-${{ github.sha }}
+          path: release/eclipse-rp-host-test.tar.gz
+          if-no-files-found: error
+          retention-days: 7

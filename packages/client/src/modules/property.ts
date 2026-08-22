@@ -1,0 +1,3 @@
+import { RpcEvent } from '@eclipse/shared';
+import { allowFromCef } from '../core/cefBridge';
+export const registerPropertyModule=():void=>{allowFromCef(RpcEvent.PropertyCatalog,RpcEvent.PropertyOwned,RpcEvent.PropertyBuy,RpcEvent.PropertySell,RpcEvent.PropertyEnter,RpcEvent.PropertyExit,RpcEvent.PropertyRentConfig,RpcEvent.PropertyRent,RpcEvent.PropertyTaxPay,RpcEvent.PropertyStorage,RpcEvent.PropertyStorageTransfer,RpcEvent.PropertyGarage,RpcEvent.PropertyGarageStore,RpcEvent.PropertyGarageRelease,RpcEvent.PropertyFurniture,RpcEvent.PropertyFurniturePlace,RpcEvent.PropertyFurnitureRemove);};

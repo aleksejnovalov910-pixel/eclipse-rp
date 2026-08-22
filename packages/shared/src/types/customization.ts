@@ -1,0 +1,15 @@
+export interface ClothingComponentState{drawable:number;texture:number}
+export type OutfitComponents=Record<string,ClothingComponentState>;
+export interface CustomizationShopView{id:string;key:string;kind:'clothing'|'barber'|'tattoo';name:string;position:{x:number;y:number;z:number};radius:number}
+export interface ClothingCatalogItem{key:string;gender:'male'|'female'|'unisex';category:string;componentId:number;drawable:number;texture:number;name:string;price:string;owned:boolean;equipped:boolean}
+export interface OutfitView{components:OutfitComponents}
+export interface ClothingCatalogRequest{shopId?:string}
+export interface ClothingBuyRequest{itemKey:string}
+export interface ClothingEquipRequest{itemKey:string}
+export interface BarberCatalogItem{key:string;gender:'male'|'female'|'unisex';category:'hair'|'eyebrows'|'beard';style:number;name:string;price:string;selected:boolean}
+export interface BarberApplyRequest{itemKey:string;color?:number;highlight?:number}
+export interface BarberApplyResult{appearance:import('./character').CharacterAppearance;paid:string;bank:string}
+export interface TattooCatalogItem{key:string;gender:'male'|'female'|'unisex';zone:string;collection:string;overlay:string;name:string;price:string;owned:boolean}
+export interface TattooView{key:string;zone:string;collection:string;overlay:string;name:string}
+export interface TattooBuyRequest{itemKey:string}
+export interface TattooBuyResult{tattoos:TattooView[];paid:string;bank:string}
