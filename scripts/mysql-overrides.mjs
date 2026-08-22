@@ -2,6 +2,16 @@ export const applyMysqlOverride = (file, input) => {
   // MySQL accepts expression defaults only when wrapped in parentheses.
   let sql = input.replace(/DEFAULT\s+UUID\(\)/gi, 'DEFAULT (UUID())');
 
+  if (file === '0008_marketplace.sql') {
+    // PostgreSQL expands the marketplace object type constraint later in 0025.
+    // On MySQL the original inline CHECK gets an auto-generated name, so make
+    // the initial constraint forward-compatible instead of trying to drop it.
+    sql = sql.replace(
+      /object_type VARCHAR\(24\) NOT NULL CHECK \(object_type IN \('vehicle','property','business'\)\)/i,
+      "object_type VARCHAR(24) NOT NULL CHECK (object_type IN ('vehicle','property','business','item'))",
+    );
+  }
+
   if (file === '0016_documents_criminal.sql') {
     sql = sql.replace(/INSERT(?: IGNORE)? INTO criminal_faction_ranks[\s\S]*?;/i,
 `INSERT IGNORE INTO criminal_faction_ranks(faction_id,rank_index,name,permissions)
