@@ -19,6 +19,9 @@ SELECT f.id,r.rank_index,r.name,r.permissions FROM criminal_factions f JOIN (
 
   if (file === '0021_organization_assets.sql') {
     sql = sql.replace(/ALTER TABLE inventories DROP CONSTRAINT IF EXISTS inventories_owner_type_valid;[\s\S]*?CHECK \(owner_type IN \([^;]+?\)\);/i, '');
+    sql = sql.replace(/INSERT(?: IGNORE)? INTO inventories\(owner_type,owner_id,capacity_weight,slots\)[\s\S]*?;/i,
+`INSERT IGNORE INTO inventories(owner_type,owner_id,capacity_weight,slots)
+SELECT 'organization',CAST(o.id AS CHAR),500.000,80 FROM organizations o;`);
     sql = sql.replace(/UNIQUE\(organization_id,key,gender\)/i, 'UNIQUE(organization_id,`key`,gender)');
     sql = sql.replace(/INSERT(?: IGNORE)? INTO organization_vehicles[\s\S]*?;/i,
 `INSERT IGNORE INTO organization_vehicles(organization_id,model,name,plate,min_rank,position_x,position_y,position_z,heading)
